@@ -16,14 +16,32 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
             - show_bb: bool, whether to show Bollinger Bands
             - bb_period: int, period for Bollinger Bands
             - bb_std: float, standard deviation for Bollinger Bands
+            - y_axis_range: tuple, custom range for price y-axis (min, max)
+            - volume_range: tuple, custom range for volume y-axis (min, max)
     """
     # Verify volume data
     if 'volume' not in data.columns or data['volume'].isnull().all():
         raise ValueError("Volume data is missing or invalid")
     
-    # Set minimum volume height
+    # Calculate price range with padding
+    price_min = data['low'].min()
+    price_max = data['high'].max()
+    price_range = price_max - price_min
+    default_price_min = price_min - (price_range * 0.1)
+    default_price_max = price_max + (price_range * 0.1)
+    
+    # Set volume range
     min_volume = data['volume'].max() * 0.001
     volume_data = data['volume'].where(data['volume'] > min_volume, min_volume)
+    volume_max = volume_data.max()
+    
+    # Get custom ranges from chart_params if provided
+    if chart_params:
+        y_axis_range = chart_params.get('y_axis_range', (default_price_min, default_price_max))
+        volume_range = chart_params.get('volume_range', (0, volume_max * 1.1))
+    else:
+        y_axis_range = (default_price_min, default_price_max)
+        volume_range = (0, volume_max * 1.1)
     
     # Calculate price colors
     colors = ['red' if close < open else 'green' 
@@ -133,14 +151,16 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
             title="Price",
             gridcolor='rgba(128, 128, 128, 0.1)',
             zerolinecolor='rgba(128, 128, 128, 0.2)',
-            domain=[0.2, 1]
+            domain=[0.2, 1],
+            range=y_axis_range
         ),
         yaxis2=dict(
             title="Volume",
             gridcolor='rgba(128, 128, 128, 0.1)',
             zerolinecolor='rgba(128, 128, 128, 0.2)',
             tickformat='.2s',
-            domain=[0, 0.18]
+            domain=[0, 0.18],
+            range=volume_range
         )
     )
 

@@ -49,9 +49,8 @@ if 'active_strategy' not in st.session_state:
 if 'data' not in st.session_state:
     st.session_state.data = None
 if 'timeframe_value' not in st.session_state:
-    st.session_state.timeframe_value = "5m"  # Default timeframe
+    st.session_state.timeframe_value = "5m"
 
-# Initialize timeframe options
 timeframe_options = {
     "5 minutes": "5m",
     "15 minutes": "15m",
@@ -72,7 +71,6 @@ st.sidebar.title("Configuration")
 exchange = st.sidebar.selectbox("Exchange", ["binance", "coinbase", "kraken"])
 symbol = st.sidebar.selectbox("Trading Pair", ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "ADA/USDT"])
 
-# Move timeframe selector to main area, before tabs
 st.subheader("Chart Timeframe")
 timeframe = st.selectbox(
     "Select chart timeframe",
@@ -83,6 +81,34 @@ timeframe = st.selectbox(
 st.session_state.timeframe_value = timeframe_options[timeframe]
 
 st.sidebar.subheader("Chart Options")
+
+st.sidebar.subheader("Y-axis Controls")
+custom_price_range = st.sidebar.checkbox("Custom Price Range", value=False)
+price_range = None
+if custom_price_range:
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
+        price_min = st.number_input("Min Price", value=0.0, step=0.1)
+    with col2:
+        price_max = st.number_input("Max Price", value=100.0, step=0.1)
+    if price_min < price_max:
+        price_range = (price_min, price_max)
+    else:
+        st.sidebar.warning("Min price must be less than max price")
+
+custom_volume_range = st.sidebar.checkbox("Custom Volume Range", value=False)
+volume_range = None
+if custom_volume_range:
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
+        volume_min = st.number_input("Min Volume", value=0.0, step=1000.0)
+    with col2:
+        volume_max = st.number_input("Max Volume", value=1000000.0, step=1000.0)
+    if volume_min < volume_max:
+        volume_range = (volume_min, volume_max)
+    else:
+        st.sidebar.warning("Min volume must be less than max volume")
+
 show_ma = st.sidebar.checkbox("Show Moving Averages", value=False)
 if show_ma:
     ma_periods = st.sidebar.multiselect(
@@ -152,7 +178,7 @@ elif strategy == "MACD":
         'histogram_threshold': hist_threshold
     }
 
-else:  # Combined Strategy
+else:
     st.sidebar.subheader("Select Strategies to Combine")
     use_ma = st.sidebar.checkbox("Use MA Crossover", value=True)
     use_rsi = st.sidebar.checkbox("Use RSI", value=True)
@@ -226,7 +252,6 @@ def main():
             st.warning("Please configure a valid strategy to continue")
             return
 
-        # Get data using the timeframe value from session state
         try:
             data = get_historical_data(exchange, symbol, st.session_state.timeframe_value)
             if data is None or data.empty:
@@ -253,7 +278,9 @@ def main():
                         'ma_periods': ma_periods if show_ma else None,
                         'show_bb': show_bb,
                         'bb_period': bb_period if show_bb else None,
-                        'bb_std': bb_std if show_bb else None
+                        'bb_std': bb_std if show_bb else None,
+                        'y_axis_range': price_range if custom_price_range else None,
+                        'volume_range': volume_range if custom_volume_range else None
                     }
                     fig = create_price_chart(data, symbol, chart_params)
                     if fig is not None:

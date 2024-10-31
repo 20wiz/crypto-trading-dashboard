@@ -25,6 +25,10 @@ st.set_page_config(
 # Initialize session state
 if 'notifications' not in st.session_state:
     st.session_state.notifications = []
+if 'active_strategy' not in st.session_state:
+    st.session_state.active_strategy = None
+if 'data' not in st.session_state:
+    st.session_state.data = None
 
 # Sidebar
 st.sidebar.title("Configuration")
@@ -65,7 +69,7 @@ elif strategy == "Bollinger Bands":
         strategy_params = {
             'period': bb_period,
             'std_dev': bb_std,
-            'use_atr_exits': bool(use_atr),
+            'use_atr_exits': use_atr,
             'atr_period': atr_period,
             'atr_multiplier': atr_multiplier
         }
@@ -73,7 +77,7 @@ elif strategy == "Bollinger Bands":
         strategy_params = {
             'period': bb_period,
             'std_dev': bb_std,
-            'use_atr_exits': False
+            'use_atr_exits': use_atr
         }
 
 elif strategy == "MACD":
@@ -134,58 +138,94 @@ st.sidebar.subheader("Backtesting")
 initial_capital = st.sidebar.number_input("Initial Capital (USDT)", min_value=100, value=10000, step=100)
 backtest_days = st.sidebar.slider("Backtest Period (Days)", min_value=1, max_value=365, value=30)
 
-# Initialize strategy with parameters
-if strategy == "MA Crossover":
-    active_strategy = MACrossoverStrategy(**strategy_params)
-elif strategy == "RSI":
-    active_strategy = RSIStrategy(**strategy_params)
-elif strategy == "Bollinger Bands":
-    active_strategy = BollingerBandsStrategy(**strategy_params)
-elif strategy == "MACD":
-    active_strategy = MACDStrategy(**strategy_params)
-else:  # Combined Strategy
-    if len(strategy_params['strategies']) < 2:
-        st.error("Please select at least two strategies to combine")
-        active_strategy = None
-    else:
-        active_strategy = CombinedStrategy(**strategy_params)
-
 # Create tabs for live trading and backtesting
 tab1, tab2 = st.tabs(["Live Trading", "Backtesting"])
 
-def main():
+def initialize_strategy():
+    """Initialize the trading strategy based on user selection"""
     try:
+        if strategy == "MA Crossover":
+            return MACrossoverStrategy(**strategy_params)
+        elif strategy == "RSI":
+            return RSIStrategy(**strategy_params)
+        elif strategy == "Bollinger Bands":
+            return BollingerBandsStrategy(**strategy_params)
+        elif strategy == "MACD":
+            return MACDStrategy(**strategy_params)
+        elif strategy == "Combined Strategy":
+            if len(strategy_params.get('strategies', [])) < 2:
+                st.error("Please select at least two strategies to combine")
+                return None
+            return CombinedStrategy(**strategy_params)
+        return None
+    except Exception as e:
+        st.error(f"Error initializing strategy: {str(e)}")
+        return None
+
+def main():
+    """Main application logic with proper error handling"""
+    try:
+        # Initialize strategy first
+        active_strategy = initialize_strategy()
         if active_strategy is None:
-            st.warning("Configure the combined strategy parameters to continue")
+            st.warning("Please configure a valid strategy to continue")
             return
-            
-        # Fetch latest data
-        data = get_historical_data(exchange, symbol, timeframe)
-        
+
+        # Fetch data with error handling
+        try:
+            data = get_historical_data(exchange, symbol, timeframe)
+            if data is None or data.empty:
+                st.error("Failed to fetch market data")
+                return
+        except Exception as e:
+            st.error(f"Error fetching market data: {str(e)}")
+            return
+
+        # Generate signals
+        try:
+            signals = active_strategy.generate_signals(data)
+        except Exception as e:
+            st.error(f"Error generating signals: {str(e)}")
+            return
+
         with tab1:
             # Live Trading View
             col1, col2 = st.columns([2, 1])
             
             with col1:
-                # Price chart
+                # Price chart with error handling
                 st.subheader(f"{symbol} Price Chart")
-                fig = create_price_chart(data, symbol)
-                st.plotly_chart(fig, use_container_width=True)
+                try:
+                    fig = create_price_chart(data, symbol)
+                    if fig is not None:
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.error("Failed to create price chart")
+                except Exception as e:
+                    st.error(f"Error creating price chart: {str(e)}")
                 
-                # Strategy signals
-                signals = active_strategy.generate_signals(data)
-                display_signals(signals)
+                # Display signals with error handling
+                try:
+                    display_signals(signals)
+                except Exception as e:
+                    st.error(f"Error displaying signals: {str(e)}")
 
             with col2:
-                # Metrics
-                st.subheader("Performance Metrics")
-                display_metrics(data, signals)
+                # Display metrics with error handling
+                try:
+                    st.subheader("Performance Metrics")
+                    display_metrics(data, signals)
+                except Exception as e:
+                    st.error(f"Error displaying metrics: {str(e)}")
                 
                 # Latest signals
                 st.subheader("Recent Signals")
-                for signal in signals[-5:]:
-                    st.write(f"Signal: {signal['action']} at {signal['price']:.2f}")
-                    st.write(f"Indicators: {signal['indicator']}")
+                if signals:
+                    for signal in signals[-5:]:
+                        st.write(f"Signal: {signal['action']} at {signal['price']:.2f}")
+                        st.write(f"Indicators: {signal['indicator']}")
+                else:
+                    st.info("No signals generated yet")
                     
                 # Display current strategy parameters
                 st.subheader("Current Strategy Settings")
@@ -199,38 +239,41 @@ def main():
                         st.write(f"{param.replace('_', ' ').title()}: {value}")
         
         with tab2:
-            # Backtesting View
+            # Backtesting View with error handling
             st.subheader("Backtest Results")
-            
-            # Get historical data for backtesting
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=backtest_days)
-            backtest_data = get_historical_data(exchange, symbol, timeframe, limit=1440*backtest_days)
-            
-            # Run backtest
-            backtester = Backtester(active_strategy, initial_capital)
-            results = backtester.run(backtest_data)
-            
-            # Display metrics
-            col1, col2, col3, col4, col5 = st.columns(5)
-            col1.metric("Total Return", f"{results['total_return']:.2f}%")
-            col2.metric("Sharpe Ratio", f"{results['sharpe_ratio']:.2f}")
-            col3.metric("Max Drawdown", f"{results['max_drawdown']:.2f}%")
-            col4.metric("Win Rate", f"{results['win_rate']:.2f}%")
-            col5.metric("Total Trades", results['total_trades'])
-            
-            # Display backtest chart
-            backtest_chart = backtester.plot_results()
-            if backtest_chart:
-                st.plotly_chart(backtest_chart, use_container_width=True)
-            
-            # Notifications for new signals
-            if len(signals) > 0 and signals[-1] not in st.session_state.notifications:
-                st.balloons()
-                st.session_state.notifications.append(signals[-1])
+            try:
+                # Get historical data for backtesting
+                end_date = datetime.now()
+                start_date = end_date - timedelta(days=backtest_days)
+                backtest_data = get_historical_data(exchange, symbol, timeframe, limit=1440*backtest_days)
+                
+                if backtest_data is not None and not backtest_data.empty:
+                    # Run backtest
+                    backtester = Backtester(active_strategy, initial_capital)
+                    results = backtester.run(backtest_data)
+                    
+                    # Display metrics
+                    col1, col2, col3, col4, col5 = st.columns(5)
+                    col1.metric("Total Return", f"{results['total_return']:.2f}%")
+                    col2.metric("Sharpe Ratio", f"{results['sharpe_ratio']:.2f}")
+                    col3.metric("Max Drawdown", f"{results['max_drawdown']:.2f}%")
+                    col4.metric("Win Rate", f"{results['win_rate']:.2f}%")
+                    col5.metric("Total Trades", results['total_trades'])
+                    
+                    # Display backtest chart
+                    backtest_chart = backtester.plot_results()
+                    if backtest_chart:
+                        st.plotly_chart(backtest_chart, use_container_width=True)
+                    else:
+                        st.warning("No backtest results to display")
+                else:
+                    st.error("Failed to fetch backtest data")
+                    
+            except Exception as e:
+                st.error(f"Error during backtesting: {str(e)}")
 
     except Exception as e:
-        st.error(f"Error: {str(e)}")
+        st.error(f"An unexpected error occurred: {str(e)}")
 
 if __name__ == "__main__":
     main()

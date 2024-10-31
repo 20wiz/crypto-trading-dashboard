@@ -39,10 +39,6 @@ st.markdown("""
         padding: 10px;
         border-radius: 5px;
     }
-    [data-testid="stVerticalSlider"] {
-        height: 533px;
-        margin-left: 10px;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -249,9 +245,12 @@ def main():
             
             with col1:
                 st.subheader(f"{symbol} Price Chart")
-
-                # Add vertical price range slider next to chart
+                
+                # Create columns for chart and price controls
                 chart_col, slider_col = st.columns([0.95, 0.05])
+                
+                min_price = float(data['low'].min() * 0.9)
+                max_price = float(data['high'].max() * 1.1)
                 
                 chart_params = {
                     'show_ma': show_ma,
@@ -260,21 +259,28 @@ def main():
                     'bb_period': bb_period if show_bb else None,
                     'bb_std': bb_std if show_bb else None
                 }
-
+                
                 with chart_col:
                     fig = create_price_chart(data, symbol, chart_params)
                     st.plotly_chart(fig, use_container_width=True)
                 
                 with slider_col:
-                    price_range = st.slider(
-                        "Price Range",
-                        min_value=float(data['low'].min() * 0.9),
-                        max_value=float(data['high'].max() * 1.1),
-                        value=(float(data['low'].min()), float(data['high'].max())),
-                        vertical=True,
-                        key='price_range'
+                    # Add price range controls
+                    price_min = st.slider(
+                        "Min",
+                        min_value=min_price,
+                        max_value=max_price,
+                        value=min_price,
+                        key='price_min'
                     )
-                    chart_params['y_axis_range'] = price_range
+                    price_max = st.slider(
+                        "Max",
+                        min_value=price_min,
+                        max_value=max_price,
+                        value=max_price,
+                        key='price_max'
+                    )
+                    chart_params['y_axis_range'] = (price_min, price_max)
                 
                 try:
                     display_signals(signals)

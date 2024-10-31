@@ -109,11 +109,17 @@ class Backtester:
     
     def plot_results(self) -> go.Figure:
         """Create interactive plot of backtest results"""
-        if not self.portfolio_value:
+        # Check if we have data to plot
+        if not self.portfolio_value or not self.trades:
             return None
-            
+
+        # Convert portfolio value list to DataFrame first
         portfolio_df = pd.DataFrame(self.portfolio_value)
         portfolio_df.set_index('timestamp', inplace=True)
+        
+        # Calculate drawdown data before plotting
+        portfolio_df['cummax'] = portfolio_df['value'].cummax()
+        portfolio_df['drawdown'] = (portfolio_df['cummax'] - portfolio_df['value']) / portfolio_df['cummax'] * 100
         
         # Calculate y-axis ranges with improved padding
         min_value = portfolio_df['value'].min()
@@ -149,8 +155,8 @@ class Backtester:
             
             fig.add_trace(
                 go.Scatter(
-                    x=[trade['time']],
-                    y=[trade['portfolio_value']],  # Use portfolio value instead of price
+                    x=[trade['time']],  # Use list with single timestamp
+                    y=[trade['portfolio_value']],  # Use list with single portfolio value
                     mode='markers',
                     name=trade['type'],
                     marker=dict(
@@ -173,9 +179,6 @@ class Backtester:
             )
         
         # Drawdown subplot
-        portfolio_df['cummax'] = portfolio_df['value'].cummax()
-        portfolio_df['drawdown'] = (portfolio_df['cummax'] - portfolio_df['value']) / portfolio_df['cummax'] * 100
-        
         fig.add_trace(
             go.Scatter(
                 x=portfolio_df.index,

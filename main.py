@@ -39,6 +39,10 @@ st.markdown("""
         padding: 10px;
         border-radius: 5px;
     }
+    [data-testid="stVerticalSlider"] {
+        height: 533px;
+        margin-left: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -151,7 +155,7 @@ elif strategy == "MACD":
         'histogram_threshold': hist_threshold
     }
 
-else:
+else:  # Combined Strategy
     st.sidebar.subheader("Select Strategies to Combine")
     use_ma = st.sidebar.checkbox("Use MA Crossover", value=True)
     use_rsi = st.sidebar.checkbox("Use RSI", value=True)
@@ -245,36 +249,32 @@ def main():
             
             with col1:
                 st.subheader(f"{symbol} Price Chart")
+
+                # Add vertical price range slider next to chart
+                chart_col, slider_col = st.columns([0.95, 0.05])
                 
-                # Add price range controls before the chart
-                st.caption("Price Range Controls")
-                price_min = st.slider("Min Price", 
-                                    min_value=float(data['low'].min() * 0.9), 
-                                    max_value=float(data['high'].max()),
-                                    value=float(data['low'].min()),
-                                    key='price_min')
-                price_max = st.slider("Max Price",
-                                    min_value=price_min,
-                                    max_value=float(data['high'].max() * 1.1),
-                                    value=float(data['high'].max()),
-                                    key='price_max')
-                
-                try:
-                    chart_params = {
-                        'show_ma': show_ma,
-                        'ma_periods': ma_periods if show_ma else None,
-                        'show_bb': show_bb,
-                        'bb_period': bb_period if show_bb else None,
-                        'bb_std': bb_std if show_bb else None,
-                        'y_axis_range': (price_min, price_max)
-                    }
+                chart_params = {
+                    'show_ma': show_ma,
+                    'ma_periods': ma_periods if show_ma else None,
+                    'show_bb': show_bb,
+                    'bb_period': bb_period if show_bb else None,
+                    'bb_std': bb_std if show_bb else None
+                }
+
+                with chart_col:
                     fig = create_price_chart(data, symbol, chart_params)
-                    if fig is not None:
-                        st.plotly_chart(fig, use_container_width=True)
-                    else:
-                        st.error("Failed to create price chart")
-                except Exception as e:
-                    st.error(f"Error creating price chart: {str(e)}")
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                with slider_col:
+                    price_range = st.slider(
+                        "Price Range",
+                        min_value=float(data['low'].min() * 0.9),
+                        max_value=float(data['high'].max() * 1.1),
+                        value=(float(data['low'].min()), float(data['high'].max())),
+                        vertical=True,
+                        key='price_range'
+                    )
+                    chart_params['y_axis_range'] = price_range
                 
                 try:
                     display_signals(signals)

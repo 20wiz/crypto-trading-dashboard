@@ -6,8 +6,17 @@ class MACrossoverStrategy(BaseStrategy):
     def __init__(self, short_window=20, long_window=50):
         super().__init__()
         self.name = "MA Crossover"
+        self.validate_parameters(short_window, long_window)
         self.short_window = short_window
         self.long_window = long_window
+    
+    def validate_parameters(self, short_window, long_window):
+        if not isinstance(short_window, int) or not isinstance(long_window, int):
+            raise ValueError("Window sizes must be integers")
+        if short_window <= 0 or long_window <= 0:
+            raise ValueError("Window sizes must be positive")
+        if short_window >= long_window:
+            raise ValueError("Short window must be smaller than long window")
     
     def generate_signals(self, data: pd.DataFrame) -> list:
         df = data.copy()

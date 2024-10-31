@@ -6,9 +6,18 @@ class RSIStrategy(BaseStrategy):
     def __init__(self, period=14, overbought=70, oversold=30):
         super().__init__()
         self.name = "RSI Strategy"
+        self.validate_parameters(period, overbought, oversold)
         self.period = period
         self.overbought = overbought
         self.oversold = oversold
+    
+    def validate_parameters(self, period, overbought, oversold):
+        if not isinstance(period, int):
+            raise ValueError("Period must be an integer")
+        if period <= 0:
+            raise ValueError("Period must be positive")
+        if not 0 <= oversold <= overbought <= 100:
+            raise ValueError("Oversold must be less than overbought and both must be between 0 and 100")
     
     def calculate_rsi(self, data: pd.DataFrame) -> pd.Series:
         delta = data['close'].diff()

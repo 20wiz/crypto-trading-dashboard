@@ -9,6 +9,8 @@ from components.metrics import display_metrics
 from components.signals import display_signals
 from strategies.ma_crossover import MACrossoverStrategy
 from strategies.rsi_strategy import RSIStrategy
+from strategies.bollinger_bands import BollingerBandsStrategy
+from strategies.macd_strategy import MACDStrategy
 from utils.data_fetcher import get_historical_data
 from utils.backtester import Backtester
 
@@ -28,15 +30,21 @@ st.sidebar.title("Configuration")
 exchange = st.sidebar.selectbox("Exchange", ["binance", "coinbase", "kraken"])
 symbol = st.sidebar.selectbox("Trading Pair", ["BTC/USDT", "ETH/USDT", "SOL/USDT"])
 timeframe = st.sidebar.selectbox("Timeframe", ["1m", "5m", "15m", "1h", "4h", "1d"])
-strategy = st.sidebar.selectbox("Strategy", ["MA Crossover", "RSI"])
+strategy = st.sidebar.selectbox(
+    "Strategy", 
+    ["MA Crossover", "RSI", "Bollinger Bands", "MACD"]
+)
 
 # Strategy Parameters
 st.sidebar.subheader("Strategy Parameters")
+strategy_params = {}
+
 if strategy == "MA Crossover":
     short_window = st.sidebar.slider("Short MA Window", min_value=5, max_value=50, value=20, step=1)
     long_window = st.sidebar.slider("Long MA Window", min_value=20, max_value=200, value=50, step=5)
     strategy_params = {'short_window': short_window, 'long_window': long_window}
-else:
+
+elif strategy == "RSI":
     rsi_period = st.sidebar.slider("RSI Period", min_value=2, max_value=30, value=14, step=1)
     rsi_overbought = st.sidebar.slider("Overbought Level", min_value=50, max_value=90, value=70, step=1)
     rsi_oversold = st.sidebar.slider("Oversold Level", min_value=10, max_value=50, value=30, step=1)
@@ -44,6 +52,39 @@ else:
         'period': rsi_period,
         'overbought': rsi_overbought,
         'oversold': rsi_oversold
+    }
+
+elif strategy == "Bollinger Bands":
+    bb_period = st.sidebar.slider("BB Period", min_value=5, max_value=50, value=20, step=1)
+    bb_std = st.sidebar.slider("Standard Deviation", min_value=1.0, max_value=4.0, value=2.0, step=0.1)
+    use_atr = st.sidebar.checkbox("Use ATR for Exits", value=True)  # This returns a boolean
+    if use_atr:
+        atr_period = st.sidebar.slider("ATR Period", min_value=5, max_value=30, value=14, step=1)
+        atr_multiplier = st.sidebar.slider("ATR Multiplier", min_value=1.0, max_value=5.0, value=2.0, step=0.1)
+        strategy_params = {
+            'period': bb_period,
+            'std_dev': bb_std,
+            'use_atr_exits': bool(use_atr),  # Explicitly convert to boolean
+            'atr_period': atr_period,
+            'atr_multiplier': atr_multiplier
+        }
+    else:
+        strategy_params = {
+            'period': bb_period,
+            'std_dev': bb_std,
+            'use_atr_exits': False
+        }
+
+else:  # MACD
+    fast_period = st.sidebar.slider("Fast Period", min_value=5, max_value=50, value=12, step=1)
+    slow_period = st.sidebar.slider("Slow Period", min_value=10, max_value=100, value=26, step=1)
+    signal_period = st.sidebar.slider("Signal Period", min_value=5, max_value=30, value=9, step=1)
+    hist_threshold = st.sidebar.slider("Histogram Threshold", min_value=0.0, max_value=1.0, value=0.0, step=0.1)
+    strategy_params = {
+        'fast_period': fast_period,
+        'slow_period': slow_period,
+        'signal_period': signal_period,
+        'histogram_threshold': hist_threshold
     }
 
 # Backtesting Parameters
@@ -57,8 +98,12 @@ st.title("Cryptocurrency Trading Dashboard")
 # Initialize strategies with parameters
 if strategy == "MA Crossover":
     active_strategy = MACrossoverStrategy(**strategy_params)
-else:
+elif strategy == "RSI":
     active_strategy = RSIStrategy(**strategy_params)
+elif strategy == "Bollinger Bands":
+    active_strategy = BollingerBandsStrategy(**strategy_params)
+else:  # MACD
+    active_strategy = MACDStrategy(**strategy_params)
 
 # Create tabs for live trading and backtesting
 tab1, tab2 = st.tabs(["Live Trading", "Backtesting"])

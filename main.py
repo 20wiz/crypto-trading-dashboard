@@ -11,6 +11,7 @@ from strategies.ma_crossover import MACrossoverStrategy
 from strategies.rsi_strategy import RSIStrategy
 from strategies.bollinger_bands import BollingerBandsStrategy
 from strategies.macd_strategy import MACDStrategy
+from strategies.combined_strategy import CombinedStrategy
 from utils.data_fetcher import get_historical_data
 from utils.backtester import Backtester
 
@@ -32,7 +33,7 @@ symbol = st.sidebar.selectbox("Trading Pair", ["BTC/USDT", "ETH/USDT", "SOL/USDT
 timeframe = st.sidebar.selectbox("Timeframe", ["1m", "5m", "15m", "1h", "4h", "1d"])
 strategy = st.sidebar.selectbox(
     "Strategy", 
-    ["MA Crossover", "RSI", "Bollinger Bands", "MACD"]
+    ["MA Crossover", "RSI", "Bollinger Bands", "MACD", "Combined Strategy"]
 )
 
 # Strategy Parameters
@@ -57,14 +58,14 @@ elif strategy == "RSI":
 elif strategy == "Bollinger Bands":
     bb_period = st.sidebar.slider("BB Period", min_value=5, max_value=50, value=20, step=1)
     bb_std = st.sidebar.slider("Standard Deviation", min_value=1.0, max_value=4.0, value=2.0, step=0.1)
-    use_atr = st.sidebar.checkbox("Use ATR for Exits", value=True)  # This returns a boolean
+    use_atr = st.sidebar.checkbox("Use ATR for Exits", value=True)
     if use_atr:
         atr_period = st.sidebar.slider("ATR Period", min_value=5, max_value=30, value=14, step=1)
         atr_multiplier = st.sidebar.slider("ATR Multiplier", min_value=1.0, max_value=5.0, value=2.0, step=0.1)
         strategy_params = {
             'period': bb_period,
             'std_dev': bb_std,
-            'use_atr_exits': bool(use_atr),  # Explicitly convert to boolean
+            'use_atr_exits': bool(use_atr),
             'atr_period': atr_period,
             'atr_multiplier': atr_multiplier
         }
@@ -75,7 +76,7 @@ elif strategy == "Bollinger Bands":
             'use_atr_exits': False
         }
 
-else:  # MACD
+elif strategy == "MACD":
     fast_period = st.sidebar.slider("Fast Period", min_value=5, max_value=50, value=12, step=1)
     slow_period = st.sidebar.slider("Slow Period", min_value=10, max_value=100, value=26, step=1)
     signal_period = st.sidebar.slider("Signal Period", min_value=5, max_value=30, value=9, step=1)
@@ -87,29 +88,77 @@ else:  # MACD
         'histogram_threshold': hist_threshold
     }
 
+else:  # Combined Strategy
+    st.sidebar.subheader("Select Strategies to Combine")
+    use_ma = st.sidebar.checkbox("Use MA Crossover", value=True)
+    use_rsi = st.sidebar.checkbox("Use RSI", value=True)
+    use_bb = st.sidebar.checkbox("Use Bollinger Bands")
+    use_macd = st.sidebar.checkbox("Use MACD")
+    
+    combination_method = st.sidebar.radio(
+        "Combination Method",
+        ["AND", "OR"],
+        help="AND: All strategies must agree | OR: Any strategy can trigger"
+    )
+    
+    strategies_list = []
+    if use_ma:
+        ma_short = st.sidebar.slider("MA Short Window", min_value=5, max_value=50, value=20, step=1)
+        ma_long = st.sidebar.slider("MA Long Window", min_value=20, max_value=200, value=50, step=5)
+        strategies_list.append(MACrossoverStrategy(short_window=ma_short, long_window=ma_long))
+        
+    if use_rsi:
+        rsi_period = st.sidebar.slider("RSI Period", min_value=2, max_value=30, value=14, step=1)
+        rsi_ob = st.sidebar.slider("RSI Overbought", min_value=50, max_value=90, value=70, step=1)
+        rsi_os = st.sidebar.slider("RSI Oversold", min_value=10, max_value=50, value=30, step=1)
+        strategies_list.append(RSIStrategy(period=rsi_period, overbought=rsi_ob, oversold=rsi_os))
+        
+    if use_bb:
+        bb_period = st.sidebar.slider("BB Period", min_value=5, max_value=50, value=20, step=1)
+        bb_std = st.sidebar.slider("BB Std Dev", min_value=1.0, max_value=4.0, value=2.0, step=0.1)
+        strategies_list.append(BollingerBandsStrategy(period=bb_period, std_dev=bb_std))
+        
+    if use_macd:
+        macd_fast = st.sidebar.slider("MACD Fast", min_value=5, max_value=50, value=12, step=1)
+        macd_slow = st.sidebar.slider("MACD Slow", min_value=10, max_value=100, value=26, step=1)
+        macd_signal = st.sidebar.slider("MACD Signal", min_value=5, max_value=30, value=9, step=1)
+        strategies_list.append(MACDStrategy(fast_period=macd_fast, slow_period=macd_slow, signal_period=macd_signal))
+    
+    strategy_params = {
+        'strategies': strategies_list,
+        'combination_method': combination_method
+    }
+
 # Backtesting Parameters
 st.sidebar.subheader("Backtesting")
 initial_capital = st.sidebar.number_input("Initial Capital (USDT)", min_value=100, value=10000, step=100)
 backtest_days = st.sidebar.slider("Backtest Period (Days)", min_value=1, max_value=365, value=30)
 
-# Main content
-st.title("Cryptocurrency Trading Dashboard")
-
-# Initialize strategies with parameters
+# Initialize strategy with parameters
 if strategy == "MA Crossover":
     active_strategy = MACrossoverStrategy(**strategy_params)
 elif strategy == "RSI":
     active_strategy = RSIStrategy(**strategy_params)
 elif strategy == "Bollinger Bands":
     active_strategy = BollingerBandsStrategy(**strategy_params)
-else:  # MACD
+elif strategy == "MACD":
     active_strategy = MACDStrategy(**strategy_params)
+else:  # Combined Strategy
+    if len(strategy_params['strategies']) < 2:
+        st.error("Please select at least two strategies to combine")
+        active_strategy = None
+    else:
+        active_strategy = CombinedStrategy(**strategy_params)
 
 # Create tabs for live trading and backtesting
 tab1, tab2 = st.tabs(["Live Trading", "Backtesting"])
 
 def main():
     try:
+        if active_strategy is None:
+            st.warning("Configure the combined strategy parameters to continue")
+            return
+            
         # Fetch latest data
         data = get_historical_data(exchange, symbol, timeframe)
         
@@ -136,11 +185,18 @@ def main():
                 st.subheader("Recent Signals")
                 for signal in signals[-5:]:
                     st.write(f"Signal: {signal['action']} at {signal['price']:.2f}")
+                    st.write(f"Indicators: {signal['indicator']}")
                     
                 # Display current strategy parameters
                 st.subheader("Current Strategy Settings")
-                for param, value in strategy_params.items():
-                    st.write(f"{param.replace('_', ' ').title()}: {value}")
+                if strategy == "Combined Strategy":
+                    st.write(f"Combination Method: {strategy_params['combination_method']}")
+                    st.write(f"Active Strategies: {len(strategy_params['strategies'])}")
+                    for s in strategy_params['strategies']:
+                        st.write(f"- {s.name}")
+                else:
+                    for param, value in strategy_params.items():
+                        st.write(f"{param.replace('_', ' ').title()}: {value}")
         
         with tab2:
             # Backtesting View

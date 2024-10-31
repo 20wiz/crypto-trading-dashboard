@@ -17,8 +17,8 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
     volume_max = volume_data.max()
     
     # Calculate price range
-    price_min = data['low'].min()
-    price_max = data['high'].max()
+    price_min = float(data['low'].min())
+    price_max = float(data['high'].max())
     price_range = price_max - price_min
     y_axis_range = (price_min - (price_range * 0.1), price_max + (price_range * 0.1))
     volume_range = (0, volume_max * 1.1)
@@ -127,24 +127,14 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
         xaxis_rangeslider_visible=False,
         template='plotly_dark',
         margin=dict(t=30, b=30),
-        dragmode='pan',  # Enable pan by default
-        modebar=dict(
-            add=[
-                'drawline',
-                'drawopenpath',
-                'drawclosedpath',
-                'drawcircle',
-                'drawrect',
-                'eraseshape'
-            ]
-        ),
+        dragmode='pan',
         yaxis=dict(
             title="Price",
             gridcolor='rgba(128, 128, 128, 0.1)',
             zerolinecolor='rgba(128, 128, 128, 0.2)',
             domain=[0.2, 1],
-            fixedrange=False,  # Allow y-axis zooming
-            autorange=True,    # Enable auto-ranging
+            fixedrange=False,
+            autorange=True,
             rangemode='normal'
         ),
         yaxis2=dict(
@@ -153,39 +143,12 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
             zerolinecolor='rgba(128, 128, 128, 0.2)',
             tickformat='.2s',
             domain=[0, 0.18],
-            fixedrange=True    # Keep volume axis fixed
-        )
-    )
-
-    # Configure mouse wheel zoom and double-click behavior
-    fig.update_layout(
+            fixedrange=True
+        ),
         newshape=dict(line_color='yellow'),
         hovermode='x unified',
-        dragmode='zoom',
         selectdirection='h',
         clickmode='event+select'
-    )
-
-    # Add custom JavaScript event handlers
-    fig.update_layout(
-        updatemenus=[
-            dict(
-                type='buttons',
-                showactive=False,
-                buttons=[
-                    dict(
-                        label='Reset Zoom',
-                        method='relayout',
-                        args=[{'yaxis.autorange': True}]
-                    )
-                ],
-                pad={"r": 10, "t": 10},
-                x=0.1,
-                xanchor="left",
-                y=1.1,
-                yanchor="top"
-            )
-        ]
     )
 
     # Update axes for better gridlines
@@ -208,21 +171,47 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
         row=1, col=1
     )
 
-    # Add JavaScript event handlers through config
+    # Add buttons for y-axis range control
     fig.update_layout(
-        config={
-            'scrollZoom': True,
-            'doubleClick': 'reset',
-            'modeBarButtonsToAdd': [
-                'drawline',
-                'drawopenpath',
-                'drawclosedpath',
-                'drawcircle',
-                'drawrect',
-                'eraseshape'
-            ],
-            'responsive': True
-        }
+        updatemenus=[
+            dict(
+                type='buttons',
+                direction='right',
+                x=0.1,
+                y=1.1,
+                xanchor='left',
+                yanchor='top',
+                pad=dict(r=10, t=10),
+                showactive=False,
+                buttons=[
+                    dict(
+                        label='Reset Zoom',
+                        method='relayout',
+                        args=[{'yaxis.autorange': True}]
+                    ),
+                    dict(
+                        label='Zoom In',
+                        method='relayout',
+                        args=[{
+                            'yaxis.range': [
+                                price_min + (price_range * 0.2),
+                                price_max - (price_range * 0.2)
+                            ]
+                        }]
+                    ),
+                    dict(
+                        label='Zoom Out',
+                        method='relayout',
+                        args=[{
+                            'yaxis.range': [
+                                price_min - (price_range * 0.2),
+                                price_max + (price_range * 0.2)
+                            ]
+                        }]
+                    )
+                ]
+            )
+        ]
     )
 
     return fig

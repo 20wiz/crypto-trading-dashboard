@@ -246,12 +246,6 @@ def main():
             with col1:
                 st.subheader(f"{symbol} Price Chart")
                 
-                # Create columns for chart and price controls
-                chart_col, slider_col = st.columns([0.95, 0.05])
-                
-                min_price = float(data['low'].min() * 0.9)
-                max_price = float(data['high'].max() * 1.1)
-                
                 chart_params = {
                     'show_ma': show_ma,
                     'ma_periods': ma_periods if show_ma else None,
@@ -259,28 +253,23 @@ def main():
                     'bb_period': bb_period if show_bb else None,
                     'bb_std': bb_std if show_bb else None
                 }
-                
-                with chart_col:
-                    fig = create_price_chart(data, symbol, chart_params)
-                    st.plotly_chart(fig, use_container_width=True)
-                
-                with slider_col:
-                    # Add price range controls
-                    price_min = st.slider(
-                        "Min",
-                        min_value=min_price,
-                        max_value=max_price,
-                        value=min_price,
-                        key='price_min'
-                    )
-                    price_max = st.slider(
-                        "Max",
-                        min_value=price_min,
-                        max_value=max_price,
-                        value=max_price,
-                        key='price_max'
-                    )
-                    chart_params['y_axis_range'] = (price_min, price_max)
+
+                # Add zoom buttons in a horizontal layout
+                zoom_col1, zoom_col2 = st.columns(2)
+                with zoom_col1:
+                    if st.button("➖ Zoom Out"):
+                        y_min = float(data['low'].min() * 0.8)
+                        y_max = float(data['high'].max() * 1.2)
+                        chart_params['y_axis_range'] = (y_min, y_max)
+                with zoom_col2:
+                    if st.button("➕ Zoom In"):
+                        y_min = float(data['low'].min() * 0.95)
+                        y_max = float(data['high'].max() * 1.05)
+                        chart_params['y_axis_range'] = (y_min, y_max)
+
+                # Create and display the chart
+                fig = create_price_chart(data, symbol, chart_params)
+                st.plotly_chart(fig, use_container_width=True)
                 
                 try:
                     display_signals(signals)

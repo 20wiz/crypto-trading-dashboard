@@ -25,7 +25,7 @@ def create_price_chart(data: pd.DataFrame, symbol: str) -> go.Figure:
         shared_xaxes=True,
         vertical_spacing=0.03,
         subplot_titles=(f'{symbol} Price', 'Volume'),
-        row_heights=[0.65, 0.35]  # Increased volume subplot height
+        row_heights=[0.825, 0.175]  # Updated row heights for more compact volume chart
     )
 
     # Candlestick chart
@@ -68,14 +68,14 @@ def create_price_chart(data: pd.DataFrame, symbol: str) -> go.Figure:
             title="Price",
             gridcolor='rgba(128, 128, 128, 0.1)',
             zerolinecolor='rgba(128, 128, 128, 0.2)',
-            domain=[0.35, 1]  # Adjust price chart domain
+            domain=[0.2, 1]  # Updated domain for price chart
         ),
         yaxis2=dict(
             title="Volume",
             gridcolor='rgba(128, 128, 128, 0.1)',
             zerolinecolor='rgba(128, 128, 128, 0.2)',
             tickformat='.2s',  # Use SI units for volume
-            domain=[0, 0.32]  # Adjust volume chart domain
+            domain=[0, 0.18]  # Updated domain for volume chart
         )
     )
 

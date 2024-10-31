@@ -45,7 +45,7 @@ def display_signals(signals: list):
             ),
             "price": st.column_config.NumberColumn(
                 "Price",
-                format="$.4f",
+                format="$.2f",  # Changed from $.4f to $.2f
                 help="Asset price at signal"
             ),
             "action": st.column_config.Column(

@@ -147,51 +147,71 @@ class Backtester:
                 y=portfolio_df['value'],
                 name='Portfolio Value',
                 line=dict(color='rgb(49,130,189)', width=2),
-                hovertemplate="Time: %{x}<br>Value: $%{y:,.2f}<extra></extra>"
+                hovertemplate="Time: %{x}<br>Value: $%{y:,.2f}<extra></extra>",
+                legendgroup='portfolio'
             ),
             row=1, col=1
         )
         
         # Add trade markers with error handling
+        entry_times = []
+        entry_values = []
+        exit_times = []
+        exit_values = []
+        
         try:
             for trade in self.trades:
                 if not isinstance(trade, dict) or 'time' not in trade or 'portfolio_value' not in trade:
                     continue
                     
-                marker_color = 'green' if trade['type'] == 'ENTRY' else 'red'
-                marker_symbol = 'triangle-up' if trade['type'] == 'ENTRY' else 'triangle-down'
-                
-                # Create hover text with proper formatting
-                hover_text = (
-                    f"<b>{trade['type']}</b><br>"
-                    f"Time: {trade['time']}<br>"
-                    f"Portfolio Value: ${trade['portfolio_value']:,.2f}<br>"
-                    f"Price: ${trade['price']:,.2f}<br>"
-                    f"Size: {trade['size']:.4f}"
-                )
-                if 'pnl' in trade:
-                    hover_text += f"<br>PnL: ${trade['pnl']:,.2f}"
-                
+                if trade['type'] == 'ENTRY':
+                    entry_times.append(trade['time'])
+                    entry_values.append(trade['portfolio_value'])
+                else:  # EXIT
+                    exit_times.append(trade['time'])
+                    exit_values.append(trade['portfolio_value'])
+            
+            # Plot entry points
+            if entry_times:
                 fig.add_trace(
                     go.Scatter(
-                        x=[trade['time']],
-                        y=[trade['portfolio_value']],
+                        x=entry_times,
+                        y=entry_values,
                         mode='markers',
-                        name=trade['type'],
+                        name='Entry',
                         marker=dict(
-                            color=marker_color,
-                            size=15,
-                            symbol=marker_symbol,
+                            color='green',
+                            size=12,
+                            symbol='triangle-up',
                             line=dict(color='white', width=1)
                         ),
-                        hovertext=hover_text,
-                        hoverinfo='text'
+                        legendgroup='trades',
+                        hovertemplate="Entry<br>Time: %{x}<br>Value: $%{y:,.2f}<extra></extra>"
+                    ),
+                    row=1, col=1
+                )
+            
+            # Plot exit points
+            if exit_times:
+                fig.add_trace(
+                    go.Scatter(
+                        x=exit_times,
+                        y=exit_values,
+                        mode='markers',
+                        name='Exit',
+                        marker=dict(
+                            color='red',
+                            size=12,
+                            symbol='triangle-down',
+                            line=dict(color='white', width=1)
+                        ),
+                        legendgroup='trades',
+                        hovertemplate="Exit<br>Time: %{x}<br>Value: $%{y:,.2f}<extra></extra>"
                     ),
                     row=1, col=1
                 )
         except Exception as e:
             print(f"Error plotting trade markers: {str(e)}")
-            # Continue with the rest of the plotting even if trade markers fail
         
         # Drawdown subplot
         fig.add_trace(
@@ -201,7 +221,9 @@ class Backtester:
                 name='Drawdown',
                 fill='tozeroy',
                 line=dict(color='rgb(204,0,0)', width=2),
-                hovertemplate="Time: %{x}<br>Drawdown: %{y:.2f}%<extra></extra>"
+                hovertemplate="Time: %{x}<br>Drawdown: %{y:.2f}%<extra></extra>",
+                legendgroup='drawdown',
+                showlegend=True
             ),
             row=2, col=1
         )
@@ -220,7 +242,8 @@ class Backtester:
                 y=0.99,
                 xanchor="left",
                 x=0.01,
-                bgcolor='rgba(0,0,0,0.5)'
+                bgcolor='rgba(0,0,0,0.5)',
+                groupclick="toggleitem"
             )
         )
         

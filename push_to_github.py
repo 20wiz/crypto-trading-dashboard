@@ -1,0 +1,69 @@
+import os
+import requests
+import subprocess
+
+def create_github_repo():
+    github_token = os.environ.get('GITHUB_TOKEN')
+    if not github_token:
+        print("Error: GITHUB_TOKEN not found in environment")
+        return None
+        
+    headers = {
+        'Authorization': f'token {github_token}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+    
+    data = {
+        'name': 'crypto-trading-dashboard',
+        'description': 'A cryptocurrency trading dashboard with real-time charts, multiple strategies, and signal notifications',
+        'private': False,
+        'auto_init': False
+    }
+    
+    response = requests.post('https://api.github.com/user/repos', headers=headers, json=data)
+    
+    if response.status_code == 201:
+        return response.json()['clone_url']
+    elif response.status_code == 422:  # Repository already exists
+        # Get username from the token
+        user_response = requests.get('https://api.github.com/user', headers=headers)
+        if user_response.status_code == 200:
+            username = user_response.json()['login']
+            return f'https://github.com/{username}/crypto-trading-dashboard.git'
+    return None
+
+def setup_and_push(repo_url):
+    try:
+        # Configure git user (using generic values since this is a one-time push)
+        subprocess.run(['git', 'config', '--global', 'user.email', 'replit@example.com'], check=True)
+        subprocess.run(['git', 'config', '--global', 'user.name', 'Replit'], check=True)
+        
+        commands = [
+            ['git', 'remote', 'remove', 'origin'],  # Remove existing origin if any
+            ['git', 'remote', 'add', 'origin', repo_url],
+            ['git', 'add', '.'],
+            ['git', 'commit', '-m', 'Initial commit: Cryptocurrency Trading Dashboard'],
+            ['git', 'branch', '-M', 'main'],
+            ['git', 'push', '-u', 'origin', 'main', '--force']
+        ]
+        
+        for cmd in commands:
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0 and 'nothing to commit' not in result.stderr:
+                print(f"Error executing {' '.join(cmd)}: {result.stderr}")
+                return False
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing git command: {e}")
+        return False
+
+if __name__ == "__main__":
+    repo_url = create_github_repo()
+    if repo_url:
+        print(f"Repository URL: {repo_url}")
+        if setup_and_push(repo_url):
+            print("Successfully pushed code to GitHub")
+        else:
+            print("Failed to push code to GitHub")
+    else:
+        print("Failed to create or find GitHub repository")

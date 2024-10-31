@@ -68,16 +68,6 @@ timeframe_options = {
 
 st.sidebar.title("Configuration")
 
-# Move timeframe selection to the top
-st.sidebar.subheader("Select Timeframe")
-timeframe = st.sidebar.selectbox(
-    "Select chart timeframe",
-    options=list(timeframe_options.keys()),
-    format_func=lambda x: x,
-    key="timeframe_selector"
-)
-timeframe_value = timeframe_options[timeframe]
-
 exchange = st.sidebar.selectbox("Exchange", ["binance", "coinbase", "kraken"])
 symbol = st.sidebar.selectbox("Trading Pair", ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "ADA/USDT"])
 
@@ -225,22 +215,31 @@ def main():
             st.warning("Please configure a valid strategy to continue")
             return
 
-        try:
-            data = get_historical_data(exchange, symbol, timeframe_value)
-            if data is None or data.empty:
-                st.error("Failed to fetch market data")
-                return
-        except Exception as e:
-            st.error(f"Error fetching market data: {str(e)}")
-            return
-
-        try:
-            signals = active_strategy.generate_signals(data)
-        except Exception as e:
-            st.error(f"Error generating signals: {str(e)}")
-            return
-
         with tab1:
+            # Add timeframe selector before the columns
+            timeframe = st.selectbox(
+                "Select chart timeframe",
+                options=list(timeframe_options.keys()),
+                format_func=lambda x: x,
+                key="timeframe_selector"
+            )
+            timeframe_value = timeframe_options[timeframe]
+
+            try:
+                data = get_historical_data(exchange, symbol, timeframe_value)
+                if data is None or data.empty:
+                    st.error("Failed to fetch market data")
+                    return
+            except Exception as e:
+                st.error(f"Error fetching market data: {str(e)}")
+                return
+
+            try:
+                signals = active_strategy.generate_signals(data)
+            except Exception as e:
+                st.error(f"Error generating signals: {str(e)}")
+                return
+
             col1, col2 = st.columns([2, 1])
             
             with col1:

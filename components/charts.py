@@ -23,24 +23,20 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
     if 'volume' not in data.columns or data['volume'].isnull().all():
         raise ValueError("Volume data is missing or invalid")
     
-    # Calculate price range with padding
-    price_min = data['low'].min()
-    price_max = data['high'].max()
-    price_range = price_max - price_min
-    default_price_min = price_min - (price_range * 0.1)
-    default_price_max = price_max + (price_range * 0.1)
-    
     # Set volume range
     min_volume = data['volume'].max() * 0.001
     volume_data = data['volume'].where(data['volume'] > min_volume, min_volume)
     volume_max = volume_data.max()
     
-    # Get custom ranges from chart_params if provided
+    # Get custom ranges from chart_params
     if chart_params:
-        y_axis_range = chart_params.get('y_axis_range', (default_price_min, default_price_max))
+        y_axis_range = chart_params.get('y_axis_range')
         volume_range = chart_params.get('volume_range', (0, volume_max * 1.1))
     else:
-        y_axis_range = (default_price_min, default_price_max)
+        price_min = data['low'].min()
+        price_max = data['high'].max()
+        price_range = price_max - price_min
+        y_axis_range = (price_min - (price_range * 0.1), price_max + (price_range * 0.1))
         volume_range = (0, volume_max * 1.1)
     
     # Calculate price colors
@@ -124,7 +120,7 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
             row=1, col=1
         )
 
-    # Volume chart with color coding and improved visibility
+    # Volume chart with color coding
     fig.add_trace(
         go.Bar(
             x=data.index,
@@ -142,7 +138,7 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
 
     # Update layout for better visualization
     fig.update_layout(
-        height=800,
+        height=533,  # Changed from 800 to 533 (2/3 of original)
         showlegend=True,
         xaxis_rangeslider_visible=False,
         template='plotly_dark',

@@ -82,33 +82,6 @@ st.session_state.timeframe_value = timeframe_options[timeframe]
 
 st.sidebar.subheader("Chart Options")
 
-st.sidebar.subheader("Y-axis Controls")
-custom_price_range = st.sidebar.checkbox("Custom Price Range", value=False)
-price_range = None
-if custom_price_range:
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        price_min = st.number_input("Min Price", value=0.0, step=0.1)
-    with col2:
-        price_max = st.number_input("Max Price", value=100.0, step=0.1)
-    if price_min < price_max:
-        price_range = (price_min, price_max)
-    else:
-        st.sidebar.warning("Min price must be less than max price")
-
-custom_volume_range = st.sidebar.checkbox("Custom Volume Range", value=False)
-volume_range = None
-if custom_volume_range:
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        volume_min = st.number_input("Min Volume", value=0.0, step=1000.0)
-    with col2:
-        volume_max = st.number_input("Max Volume", value=1000000.0, step=1000.0)
-    if volume_min < volume_max:
-        volume_range = (volume_min, volume_max)
-    else:
-        st.sidebar.warning("Min volume must be less than max volume")
-
 show_ma = st.sidebar.checkbox("Show Moving Averages", value=False)
 if show_ma:
     ma_periods = st.sidebar.multiselect(
@@ -272,6 +245,20 @@ def main():
             
             with col1:
                 st.subheader(f"{symbol} Price Chart")
+                
+                # Add price range controls before the chart
+                st.caption("Price Range Controls")
+                price_min = st.slider("Min Price", 
+                                    min_value=float(data['low'].min() * 0.9), 
+                                    max_value=float(data['high'].max()),
+                                    value=float(data['low'].min()),
+                                    key='price_min')
+                price_max = st.slider("Max Price",
+                                    min_value=price_min,
+                                    max_value=float(data['high'].max() * 1.1),
+                                    value=float(data['high'].max()),
+                                    key='price_max')
+                
                 try:
                     chart_params = {
                         'show_ma': show_ma,
@@ -279,8 +266,7 @@ def main():
                         'show_bb': show_bb,
                         'bb_period': bb_period if show_bb else None,
                         'bb_std': bb_std if show_bb else None,
-                        'y_axis_range': price_range if custom_price_range else None,
-                        'volume_range': volume_range if custom_volume_range else None
+                        'y_axis_range': (price_min, price_max)
                     }
                     fig = create_price_chart(data, symbol, chart_params)
                     if fig is not None:

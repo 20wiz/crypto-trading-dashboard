@@ -51,8 +51,6 @@ if 'data' not in st.session_state:
     st.session_state.data = None
 if 'timeframe_value' not in st.session_state:
     st.session_state.timeframe_value = "5m"
-if 'y_axis_range' not in st.session_state:
-    st.session_state.y_axis_range = None
 
 timeframe_options = {
     "5 minutes": "5m",
@@ -159,34 +157,33 @@ elif strategy == "MACD":
 
 else:  # Combined Strategy
     st.sidebar.subheader("Select Strategies to Combine")
-    use_ma = st.sidebar.checkbox("Use MA Crossover", value=True)
-    use_rsi = st.sidebar.checkbox("Use RSI", value=True)
-    use_bb = st.sidebar.checkbox("Use Bollinger Bands")
-    use_macd = st.sidebar.checkbox("Use MACD")
-    
+    strategies_list = []
     combination_method = st.sidebar.radio(
         "Combination Method",
         ["AND", "OR"],
         help="AND: All strategies must agree | OR: Any strategy can trigger"
     )
     
-    strategies_list = []
+    use_ma = st.sidebar.checkbox("Use MA Crossover", value=True)
     if use_ma:
         ma_short = st.sidebar.slider("MA Short Window", min_value=5, max_value=50, value=20, step=1)
         ma_long = st.sidebar.slider("MA Long Window", min_value=20, max_value=200, value=50, step=5)
         strategies_list.append(MACrossoverStrategy(short_window=ma_short, long_window=ma_long))
         
+    use_rsi = st.sidebar.checkbox("Use RSI", value=True)
     if use_rsi:
         rsi_period = st.sidebar.slider("RSI Period", min_value=2, max_value=30, value=14, step=1)
         rsi_ob = st.sidebar.slider("RSI Overbought", min_value=50, max_value=90, value=70, step=1)
         rsi_os = st.sidebar.slider("RSI Oversold", min_value=10, max_value=50, value=30, step=1)
         strategies_list.append(RSIStrategy(period=rsi_period, overbought=rsi_ob, oversold=rsi_os))
         
+    use_bb = st.sidebar.checkbox("Use Bollinger Bands")
     if use_bb:
         bb_period = st.sidebar.slider("BB Period", min_value=5, max_value=50, value=20, step=1)
         bb_std = st.sidebar.slider("BB Std Dev", min_value=1.0, max_value=4.0, value=2.0, step=0.1)
         strategies_list.append(BollingerBandsStrategy(period=bb_period, std_dev=bb_std, use_atr_exits=False))
         
+    use_macd = st.sidebar.checkbox("Use MACD")
     if use_macd:
         macd_fast = st.sidebar.slider("MACD Fast", min_value=5, max_value=50, value=12, step=1)
         macd_slow = st.sidebar.slider("MACD Slow", min_value=10, max_value=100, value=26, step=1)
@@ -252,32 +249,24 @@ def main():
             with col1:
                 st.subheader(f"{symbol} Price Chart")
                 
-                # Add zoom controls
-                zoom_col1, zoom_col2 = st.columns(2)
-                with zoom_col1:
-                    if st.button("➖ Zoom Out"):
-                        y_min = float(data['low'].min() * 0.95)  # Changed from 0.9
-                        y_max = float(data['high'].max() * 1.05)  # Changed from 1.1
-                        st.session_state.y_axis_range = (y_min, y_max)
-                with zoom_col2:
-                    if st.button("➕ Zoom In"):
-                        y_min = float(data['low'].min() * 0.98)  # Changed from 0.97
-                        y_max = float(data['high'].max() * 1.02)  # Changed from 1.03
-                        st.session_state.y_axis_range = (y_min, y_max)
-                
                 # Create chart parameters
                 chart_params = {
                     'show_ma': show_ma,
                     'ma_periods': ma_periods if show_ma else None,
                     'show_bb': show_bb,
                     'bb_period': bb_period if show_bb else None,
-                    'bb_std': bb_std if show_bb else None,
-                    'y_axis_range': st.session_state.y_axis_range
+                    'bb_std': bb_std if show_bb else None
                 }
                 
-                # Create and display the chart
+                # Create and display the chart with JavaScript-based zoom controls
                 fig = create_price_chart(data, symbol, chart_params)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, config={
+                    'scrollZoom': True,
+                    'doubleClick': 'reset',
+                    'displayModeBar': True,
+                    'responsive': True,
+                    'modeBarButtonsToAdd': ['drawline', 'drawopenpath', 'drawclosedpath', 'drawcircle', 'drawrect', 'eraseshape']
+                })
                 
                 try:
                     display_signals(signals)

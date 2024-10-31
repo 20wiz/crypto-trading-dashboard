@@ -6,18 +6,6 @@ import numpy as np
 def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = None) -> go.Figure:
     """
     Create an interactive price chart with volume and optional overlays
-    
-    Args:
-        data: DataFrame with OHLCV data
-        symbol: Trading pair symbol
-        chart_params: Dictionary containing chart overlay parameters
-            - show_ma: bool, whether to show moving averages
-            - ma_periods: list of integers, periods for moving averages
-            - show_bb: bool, whether to show Bollinger Bands
-            - bb_period: int, period for Bollinger Bands
-            - bb_std: float, standard deviation for Bollinger Bands
-            - y_axis_range: tuple, custom range for price y-axis (min, max)
-            - volume_range: tuple, custom range for volume y-axis (min, max)
     """
     # Verify volume data
     if 'volume' not in data.columns or data['volume'].isnull().all():
@@ -28,16 +16,12 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
     volume_data = data['volume'].where(data['volume'] > min_volume, min_volume)
     volume_max = volume_data.max()
     
-    # Get custom ranges from chart_params
-    if chart_params:
-        y_axis_range = chart_params.get('y_axis_range')
-        volume_range = chart_params.get('volume_range', (0, volume_max * 1.1))
-    else:
-        price_min = data['low'].min()
-        price_max = data['high'].max()
-        price_range = price_max - price_min
-        y_axis_range = (price_min - (price_range * 0.1), price_max + (price_range * 0.1))
-        volume_range = (0, volume_max * 1.1)
+    # Calculate price range
+    price_min = data['low'].min()
+    price_max = data['high'].max()
+    price_range = price_max - price_min
+    y_axis_range = (price_min - (price_range * 0.1), price_max + (price_range * 0.1))
+    volume_range = (0, volume_max * 1.1)
     
     # Calculate price colors
     colors = ['red' if close < open else 'green' 
@@ -138,17 +122,30 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
 
     # Update layout for better visualization
     fig.update_layout(
-        height=533,  # Changed from 800 to 533 (2/3 of original)
+        height=533,
         showlegend=True,
         xaxis_rangeslider_visible=False,
         template='plotly_dark',
         margin=dict(t=30, b=30),
+        dragmode='pan',  # Enable pan by default
+        modebar=dict(
+            add=[
+                'drawline',
+                'drawopenpath',
+                'drawclosedpath',
+                'drawcircle',
+                'drawrect',
+                'eraseshape'
+            ]
+        ),
         yaxis=dict(
             title="Price",
             gridcolor='rgba(128, 128, 128, 0.1)',
             zerolinecolor='rgba(128, 128, 128, 0.2)',
             domain=[0.2, 1],
-            range=y_axis_range
+            fixedrange=False,  # Allow y-axis zooming
+            autorange=True,    # Enable auto-ranging
+            rangemode='normal'
         ),
         yaxis2=dict(
             title="Volume",
@@ -156,12 +153,76 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
             zerolinecolor='rgba(128, 128, 128, 0.2)',
             tickformat='.2s',
             domain=[0, 0.18],
-            range=volume_range
+            fixedrange=True    # Keep volume axis fixed
         )
     )
 
+    # Configure mouse wheel zoom and double-click behavior
+    fig.update_layout(
+        newshape=dict(line_color='yellow'),
+        hovermode='x unified',
+        dragmode='zoom',
+        selectdirection='h',
+        clickmode='event+select'
+    )
+
+    # Add custom JavaScript event handlers
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                type='buttons',
+                showactive=False,
+                buttons=[
+                    dict(
+                        label='Reset Zoom',
+                        method='relayout',
+                        args=[{'yaxis.autorange': True}]
+                    )
+                ],
+                pad={"r": 10, "t": 10},
+                x=0.1,
+                xanchor="left",
+                y=1.1,
+                yanchor="top"
+            )
+        ]
+    )
+
     # Update axes for better gridlines
-    fig.update_xaxes(gridcolor='rgba(128, 128, 128, 0.1)')
-    fig.update_yaxes(gridcolor='rgba(128, 128, 128, 0.1)')
+    fig.update_xaxes(
+        gridcolor='rgba(128, 128, 128, 0.1)',
+        showspikes=True,
+        spikemode='across',
+        spikesnap='cursor',
+        showline=True,
+        showgrid=True
+    )
+    
+    fig.update_yaxes(
+        gridcolor='rgba(128, 128, 128, 0.1)',
+        showspikes=True,
+        spikemode='across',
+        spikesnap='cursor',
+        showline=True,
+        showgrid=True,
+        row=1, col=1
+    )
+
+    # Add JavaScript event handlers through config
+    fig.update_layout(
+        config={
+            'scrollZoom': True,
+            'doubleClick': 'reset',
+            'modeBarButtonsToAdd': [
+                'drawline',
+                'drawopenpath',
+                'drawclosedpath',
+                'drawcircle',
+                'drawrect',
+                'eraseshape'
+            ],
+            'responsive': True
+        }
+    )
 
     return fig

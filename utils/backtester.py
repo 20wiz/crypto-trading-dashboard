@@ -117,6 +117,10 @@ class Backtester:
         portfolio_df = pd.DataFrame(self.portfolio_value)
         portfolio_df.set_index('timestamp', inplace=True)
         
+        # Ensure portfolio value data is properly formatted
+        portfolio_df['value'] = pd.to_numeric(portfolio_df['value'], errors='coerce')
+        portfolio_df = portfolio_df.dropna(subset=['value'])
+        
         # Calculate drawdown data before plotting
         portfolio_df['cummax'] = portfolio_df['value'].cummax()
         portfolio_df['drawdown'] = (portfolio_df['cummax'] - portfolio_df['value']) / portfolio_df['cummax'] * 100
@@ -148,35 +152,46 @@ class Backtester:
             row=1, col=1
         )
         
-        # Add trade markers with portfolio values
-        for trade in self.trades:
-            marker_color = 'green' if trade['type'] == 'ENTRY' else 'red'
-            marker_symbol = 'triangle-up' if trade['type'] == 'ENTRY' else 'triangle-down'
-            
-            fig.add_trace(
-                go.Scatter(
-                    x=[trade['time']],  # Use list with single timestamp
-                    y=[trade['portfolio_value']],  # Use list with single portfolio value
-                    mode='markers',
-                    name=trade['type'],
-                    marker=dict(
-                        color=marker_color,
-                        size=15,  # Increased marker size
-                        symbol=marker_symbol,
-                        line=dict(color='white', width=1)  # Add white border for better visibility
+        # Add trade markers with error handling
+        try:
+            for trade in self.trades:
+                if not isinstance(trade, dict) or 'time' not in trade or 'portfolio_value' not in trade:
+                    continue
+                    
+                marker_color = 'green' if trade['type'] == 'ENTRY' else 'red'
+                marker_symbol = 'triangle-up' if trade['type'] == 'ENTRY' else 'triangle-down'
+                
+                # Ensure trade time and portfolio value are valid
+                x_val = pd.to_datetime(trade['time'])
+                y_val = float(trade['portfolio_value'])
+                
+                fig.add_trace(
+                    go.Scatter(
+                        x=[x_val],
+                        y=[y_val],
+                        mode='markers',
+                        name=trade['type'],
+                        marker=dict(
+                            color=marker_color,
+                            size=15,
+                            symbol=marker_symbol,
+                            line=dict(color='white', width=1)
+                        ),
+                        hovertemplate=(
+                            f"<b>{trade['type']}</b><br>" +
+                            f"Time: %{x}<br>" +
+                            f"Portfolio Value: ${y_val:,.2f}<br>" +
+                            f"Price: ${trade['price']:,.2f}<br>" +
+                            f"Size: {trade['size']:.4f}<br>" +
+                            (f"PnL: ${trade.get('pnl', 0):,.2f}" if 'pnl' in trade else "") +
+                            "<extra></extra>"
+                        )
                     ),
-                    hovertemplate=(
-                        f"<b>{trade['type']}</b><br>" +
-                        f"Time: %{x}<br>" +
-                        f"Portfolio Value: ${trade['portfolio_value']:,.2f}<br>" +
-                        f"Price: ${trade['price']:,.2f}<br>" +
-                        f"Size: {trade['size']:.4f}<br>" +
-                        (f"PnL: ${trade.get('pnl', 0):,.2f}" if 'pnl' in trade else "") +
-                        "<extra></extra>"
-                    )
-                ),
-                row=1, col=1
-            )
+                    row=1, col=1
+                )
+        except Exception as e:
+            print(f"Error plotting trade markers: {str(e)}")
+            # Continue with the rest of the plotting even if trade markers fail
         
         # Drawdown subplot
         fig.add_trace(

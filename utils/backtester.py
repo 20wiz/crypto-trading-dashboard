@@ -34,19 +34,23 @@ class Backtester:
                     # Enter long position
                     position = capital / current_price
                     entry_price = current_price
+                    portfolio_value = position * current_price
                     self.trades.append({
                         'type': 'ENTRY',
                         'time': current_time,
                         'price': current_price,
+                        'portfolio_value': portfolio_value,
                         'size': position
                     })
                 elif signal['action'] == 'SELL' and position > 0:
                     # Exit long position
-                    capital = position * current_price
+                    portfolio_value = position * current_price
+                    capital = portfolio_value
                     self.trades.append({
                         'type': 'EXIT',
                         'time': current_time,
                         'price': current_price,
+                        'portfolio_value': portfolio_value,
                         'size': position,
                         'pnl': (current_price - entry_price) * position
                     })
@@ -111,23 +115,23 @@ class Backtester:
         portfolio_df = pd.DataFrame(self.portfolio_value)
         portfolio_df.set_index('timestamp', inplace=True)
         
-        # Calculate y-axis ranges with padding
+        # Calculate y-axis ranges with improved padding
         min_value = portfolio_df['value'].min()
         max_value = portfolio_df['value'].max()
         value_range = max_value - min_value
-        y_min = min_value - (value_range * 0.05)  # 5% padding
-        y_max = max_value + (value_range * 0.05)
+        y_min = min_value - (value_range * 0.1)  # 10% padding
+        y_max = max_value + (value_range * 0.1)
         
-        # Create figure with proper spacing
+        # Create figure with increased spacing between subplots
         fig = make_subplots(
             rows=2, cols=1,
             shared_xaxes=True,
-            vertical_spacing=0.15,  # Increased spacing between subplots
+            vertical_spacing=0.15,
             subplot_titles=('Portfolio Value', 'Drawdown'),
             row_heights=[0.7, 0.3]
         )
         
-        # Portfolio value
+        # Portfolio value line
         fig.add_trace(
             go.Scatter(
                 x=portfolio_df.index,
@@ -138,7 +142,37 @@ class Backtester:
             row=1, col=1
         )
         
-        # Drawdown
+        # Add trade markers with portfolio values
+        for trade in self.trades:
+            marker_color = 'green' if trade['type'] == 'ENTRY' else 'red'
+            marker_symbol = 'triangle-up' if trade['type'] == 'ENTRY' else 'triangle-down'
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=[trade['time']],
+                    y=[trade['portfolio_value']],  # Use portfolio value instead of price
+                    mode='markers',
+                    name=trade['type'],
+                    marker=dict(
+                        color=marker_color,
+                        size=15,  # Increased marker size
+                        symbol=marker_symbol,
+                        line=dict(color='white', width=1)  # Add white border for better visibility
+                    ),
+                    hovertemplate=(
+                        f"<b>{trade['type']}</b><br>" +
+                        f"Time: %{x}<br>" +
+                        f"Portfolio Value: ${trade['portfolio_value']:,.2f}<br>" +
+                        f"Price: ${trade['price']:,.2f}<br>" +
+                        f"Size: {trade['size']:.4f}<br>" +
+                        (f"PnL: ${trade.get('pnl', 0):,.2f}" if 'pnl' in trade else "") +
+                        "<extra></extra>"
+                    )
+                ),
+                row=1, col=1
+            )
+        
+        # Drawdown subplot
         portfolio_df['cummax'] = portfolio_df['value'].cummax()
         portfolio_df['drawdown'] = (portfolio_df['cummax'] - portfolio_df['value']) / portfolio_df['cummax'] * 100
         
@@ -147,26 +181,11 @@ class Backtester:
                 x=portfolio_df.index,
                 y=portfolio_df['drawdown'],
                 name='Drawdown',
+                fill='tozeroy',  # Fill area under drawdown line
                 line=dict(color='rgb(204,0,0)', width=2)
             ),
             row=2, col=1
         )
-        
-        # Add trade markers
-        for trade in self.trades:
-            marker_color = 'green' if trade['type'] == 'ENTRY' else 'red'
-            marker_symbol = 'triangle-up' if trade['type'] == 'ENTRY' else 'triangle-down'
-            
-            fig.add_trace(
-                go.Scatter(
-                    x=[trade['time']],
-                    y=[trade['price']],
-                    mode='markers',
-                    name=trade['type'],
-                    marker=dict(color=marker_color, size=12, symbol=marker_symbol)
-                ),
-                row=1, col=1
-            )
         
         # Update layout with improved settings
         fig.update_layout(
@@ -174,16 +193,26 @@ class Backtester:
             showlegend=True,
             template='plotly_dark',
             title=f"Backtest Results - {self.strategy.name}",
-            margin=dict(t=50, b=50, l=50, r=50),  # Balanced margins
+            margin=dict(t=50, b=50, l=50, r=50),
             plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)'
+            paper_bgcolor='rgba(0,0,0,0)',
+            legend=dict(
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                bgcolor='rgba(0,0,0,0.5)'
+            )
         )
         
         # Update axes for better visualization
         fig.update_xaxes(
             gridcolor='rgba(128,128,128,0.1)',
             showgrid=True,
-            zeroline=False
+            zeroline=False,
+            showline=True,
+            linewidth=1,
+            linecolor='rgba(128,128,128,0.2)'
         )
         
         # Update y-axes with proper ranges and grid
@@ -191,15 +220,25 @@ class Backtester:
             gridcolor='rgba(128,128,128,0.1)',
             showgrid=True,
             zeroline=False,
+            showline=True,
+            linewidth=1,
+            linecolor='rgba(128,128,128,0.2)',
             row=1, col=1,
-            range=[y_min, y_max]  # Set range for portfolio value
+            range=[y_min, y_max],  # Set range for portfolio value
+            tickformat='$,.0f'  # Format as currency
         )
         
+        # Update drawdown y-axis
+        max_drawdown = portfolio_df['drawdown'].max()
         fig.update_yaxes(
             gridcolor='rgba(128,128,128,0.1)',
             showgrid=True,
             zeroline=False,
-            range=[0, max(100, portfolio_df['drawdown'].max() * 1.1)],  # Set range for drawdown
+            showline=True,
+            linewidth=1,
+            linecolor='rgba(128,128,128,0.2)',
+            range=[0, max(100, max_drawdown * 1.2)],  # Set range with 20% padding
+            tickformat='.1f',  # Format as percentage
             row=2, col=1
         )
         

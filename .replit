@@ -15,6 +15,10 @@ author = "agent"
 task = "workflow.run"
 args = "Crypto Dashboard"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "GitHub Push"
+
 [[workflows.workflow]]
 name = "Crypto Dashboard"
 author = "agent"
@@ -29,6 +33,20 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "streamlit run main.py"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "GitHub Push"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python3 push_to_github.py"
 
 [deployment]
 run = ["sh", "-c", "streamlit run main.py"]

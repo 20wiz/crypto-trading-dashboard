@@ -15,12 +15,34 @@ from strategies.combined_strategy import CombinedStrategy
 from utils.data_fetcher import get_historical_data
 from utils.backtester import Backtester
 
-# Page config
+# Page config with improved styling
 st.set_page_config(
     page_title="Crypto Trading Dashboard",
     page_icon="📈",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
+
+# Custom CSS for better styling
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #0E1117;
+        color: #FAFAFA;
+    }
+    .stSelectbox, .stSlider {
+        background-color: #262730;
+    }
+    .stTab {
+        background-color: #1E1E1E;
+    }
+    .stMetric {
+        background-color: #262730;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # Initialize session state
 if 'notifications' not in st.session_state:
@@ -30,11 +52,38 @@ if 'active_strategy' not in st.session_state:
 if 'data' not in st.session_state:
     st.session_state.data = None
 
-# Sidebar
+# Sidebar with improved organization
 st.sidebar.title("Configuration")
+
+# Exchange and Symbol Selection
 exchange = st.sidebar.selectbox("Exchange", ["binance", "coinbase", "kraken"])
-symbol = st.sidebar.selectbox("Trading Pair", ["BTC/USDT", "ETH/USDT", "SOL/USDT"])
-timeframe = st.sidebar.selectbox("Timeframe", ["1m", "5m", "15m", "1h", "4h", "1d"])
+symbol = st.sidebar.selectbox("Trading Pair", ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "ADA/USDT"])
+
+# Enhanced Timeframe Selection
+timeframe_options = {
+    "1 minute": "1m",
+    "3 minutes": "3m",
+    "5 minutes": "5m",
+    "15 minutes": "15m",
+    "30 minutes": "30m",
+    "1 hour": "1h",
+    "2 hours": "2h",
+    "4 hours": "4h",
+    "6 hours": "6h",
+    "8 hours": "8h",
+    "12 hours": "12h",
+    "1 day": "1d",
+    "3 days": "3d",
+    "1 week": "1w",
+    "1 month": "1M"
+}
+timeframe = st.sidebar.selectbox(
+    "Timeframe",
+    options=list(timeframe_options.keys()),
+    format_func=lambda x: x
+)
+timeframe_value = timeframe_options[timeframe]
+
 strategy = st.sidebar.selectbox(
     "Strategy", 
     ["MA Crossover", "RSI", "Bollinger Bands", "MACD", "Combined Strategy"]
@@ -173,7 +222,7 @@ def main():
 
         # Fetch data with error handling
         try:
-            data = get_historical_data(exchange, symbol, timeframe)
+            data = get_historical_data(exchange, symbol, timeframe_value)
             if data is None or data.empty:
                 st.error("Failed to fetch market data")
                 return
@@ -245,7 +294,7 @@ def main():
                 # Get historical data for backtesting
                 end_date = datetime.now()
                 start_date = end_date - timedelta(days=backtest_days)
-                backtest_data = get_historical_data(exchange, symbol, timeframe, limit=1440*backtest_days)
+                backtest_data = get_historical_data(exchange, symbol, timeframe_value, limit=1440*backtest_days)
                 
                 if backtest_data is not None and not backtest_data.empty:
                     # Run backtest

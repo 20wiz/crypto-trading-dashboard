@@ -109,7 +109,6 @@ class Backtester:
     
     def plot_results(self) -> go.Figure:
         """Create interactive plot of backtest results"""
-        # Check if we have data to plot
         if not self.portfolio_value or not self.trades:
             return None
 
@@ -147,7 +146,8 @@ class Backtester:
                 x=portfolio_df.index,
                 y=portfolio_df['value'],
                 name='Portfolio Value',
-                line=dict(color='rgb(49,130,189)', width=2)
+                line=dict(color='rgb(49,130,189)', width=2),
+                hovertemplate="Time: %{x}<br>Value: $%{y:,.2f}<extra></extra>"
             ),
             row=1, col=1
         )
@@ -161,14 +161,21 @@ class Backtester:
                 marker_color = 'green' if trade['type'] == 'ENTRY' else 'red'
                 marker_symbol = 'triangle-up' if trade['type'] == 'ENTRY' else 'triangle-down'
                 
-                # Ensure trade time and portfolio value are valid
-                x_val = pd.to_datetime(trade['time'])
-                y_val = float(trade['portfolio_value'])
+                # Create hover text with proper formatting
+                hover_text = (
+                    f"<b>{trade['type']}</b><br>"
+                    f"Time: {trade['time']}<br>"
+                    f"Portfolio Value: ${trade['portfolio_value']:,.2f}<br>"
+                    f"Price: ${trade['price']:,.2f}<br>"
+                    f"Size: {trade['size']:.4f}"
+                )
+                if 'pnl' in trade:
+                    hover_text += f"<br>PnL: ${trade['pnl']:,.2f}"
                 
                 fig.add_trace(
                     go.Scatter(
-                        x=[x_val],
-                        y=[y_val],
+                        x=[trade['time']],
+                        y=[trade['portfolio_value']],
                         mode='markers',
                         name=trade['type'],
                         marker=dict(
@@ -177,15 +184,8 @@ class Backtester:
                             symbol=marker_symbol,
                             line=dict(color='white', width=1)
                         ),
-                        hovertemplate=(
-                            f"<b>{trade['type']}</b><br>" +
-                            f"Time: %{x}<br>" +
-                            f"Portfolio Value: ${y_val:,.2f}<br>" +
-                            f"Price: ${trade['price']:,.2f}<br>" +
-                            f"Size: {trade['size']:.4f}<br>" +
-                            (f"PnL: ${trade.get('pnl', 0):,.2f}" if 'pnl' in trade else "") +
-                            "<extra></extra>"
-                        )
+                        hovertext=hover_text,
+                        hoverinfo='text'
                     ),
                     row=1, col=1
                 )
@@ -199,8 +199,9 @@ class Backtester:
                 x=portfolio_df.index,
                 y=portfolio_df['drawdown'],
                 name='Drawdown',
-                fill='tozeroy',  # Fill area under drawdown line
-                line=dict(color='rgb(204,0,0)', width=2)
+                fill='tozeroy',
+                line=dict(color='rgb(204,0,0)', width=2),
+                hovertemplate="Time: %{x}<br>Drawdown: %{y:.2f}%<extra></extra>"
             ),
             row=2, col=1
         )
@@ -242,7 +243,7 @@ class Backtester:
             linewidth=1,
             linecolor='rgba(128,128,128,0.2)',
             row=1, col=1,
-            range=[y_min, y_max],  # Set range for portfolio value
+            range=[y_min, y_max],
             tickformat='$,.0f'  # Format as currency
         )
         

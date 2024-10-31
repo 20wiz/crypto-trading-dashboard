@@ -48,6 +48,8 @@ if 'active_strategy' not in st.session_state:
     st.session_state.active_strategy = None
 if 'data' not in st.session_state:
     st.session_state.data = None
+if 'timeframe_value' not in st.session_state:
+    st.session_state.timeframe_value = "5m"  # Default timeframe
 
 # Initialize timeframe options
 timeframe_options = {
@@ -67,9 +69,18 @@ timeframe_options = {
 }
 
 st.sidebar.title("Configuration")
-
 exchange = st.sidebar.selectbox("Exchange", ["binance", "coinbase", "kraken"])
 symbol = st.sidebar.selectbox("Trading Pair", ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "ADA/USDT"])
+
+# Move timeframe selector to main area, before tabs
+st.subheader("Chart Timeframe")
+timeframe = st.selectbox(
+    "Select chart timeframe",
+    options=list(timeframe_options.keys()),
+    format_func=lambda x: x,
+    key="timeframe_selector"
+)
+st.session_state.timeframe_value = timeframe_options[timeframe]
 
 st.sidebar.subheader("Chart Options")
 show_ma = st.sidebar.checkbox("Show Moving Averages", value=False)
@@ -215,31 +226,23 @@ def main():
             st.warning("Please configure a valid strategy to continue")
             return
 
+        # Get data using the timeframe value from session state
+        try:
+            data = get_historical_data(exchange, symbol, st.session_state.timeframe_value)
+            if data is None or data.empty:
+                st.error("Failed to fetch market data")
+                return
+        except Exception as e:
+            st.error(f"Error fetching market data: {str(e)}")
+            return
+
+        try:
+            signals = active_strategy.generate_signals(data)
+        except Exception as e:
+            st.error(f"Error generating signals: {str(e)}")
+            return
+
         with tab1:
-            # Add timeframe selector before the columns
-            timeframe = st.selectbox(
-                "Select chart timeframe",
-                options=list(timeframe_options.keys()),
-                format_func=lambda x: x,
-                key="timeframe_selector"
-            )
-            timeframe_value = timeframe_options[timeframe]
-
-            try:
-                data = get_historical_data(exchange, symbol, timeframe_value)
-                if data is None or data.empty:
-                    st.error("Failed to fetch market data")
-                    return
-            except Exception as e:
-                st.error(f"Error fetching market data: {str(e)}")
-                return
-
-            try:
-                signals = active_strategy.generate_signals(data)
-            except Exception as e:
-                st.error(f"Error generating signals: {str(e)}")
-                return
-
             col1, col2 = st.columns([2, 1])
             
             with col1:
@@ -295,7 +298,12 @@ def main():
             try:
                 end_date = datetime.now()
                 start_date = end_date - timedelta(days=backtest_days)
-                backtest_data = get_historical_data(exchange, symbol, timeframe_value, limit=1440*backtest_days)
+                backtest_data = get_historical_data(
+                    exchange, 
+                    symbol, 
+                    st.session_state.timeframe_value, 
+                    limit=1440*backtest_days
+                )
                 
                 if backtest_data is not None and not backtest_data.empty:
                     backtester = Backtester(active_strategy, initial_capital)

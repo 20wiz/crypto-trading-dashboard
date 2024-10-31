@@ -15,7 +15,6 @@ from strategies.combined_strategy import CombinedStrategy
 from utils.data_fetcher import get_historical_data
 from utils.backtester import Backtester
 
-# Page config with improved styling
 st.set_page_config(
     page_title="Crypto Trading Dashboard",
     page_icon="📈",
@@ -23,7 +22,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
 st.markdown("""
     <style>
     .stApp {
@@ -44,7 +42,6 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Initialize session state
 if 'notifications' not in st.session_state:
     st.session_state.notifications = []
 if 'active_strategy' not in st.session_state:
@@ -52,17 +49,12 @@ if 'active_strategy' not in st.session_state:
 if 'data' not in st.session_state:
     st.session_state.data = None
 
-# Sidebar with improved organization
 st.sidebar.title("Configuration")
 
-# Exchange and Symbol Selection
 exchange = st.sidebar.selectbox("Exchange", ["binance", "coinbase", "kraken"])
 symbol = st.sidebar.selectbox("Trading Pair", ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "ADA/USDT"])
 
-# Enhanced Timeframe Selection
 timeframe_options = {
-    "1 minute": "1m",
-    "3 minutes": "3m",
     "5 minutes": "5m",
     "15 minutes": "15m",
     "30 minutes": "30m",
@@ -77,6 +69,7 @@ timeframe_options = {
     "1 week": "1w",
     "1 month": "1M"
 }
+
 timeframe = st.sidebar.selectbox(
     "Timeframe",
     options=list(timeframe_options.keys()),
@@ -84,12 +77,25 @@ timeframe = st.sidebar.selectbox(
 )
 timeframe_value = timeframe_options[timeframe]
 
+st.sidebar.subheader("Chart Options")
+show_ma = st.sidebar.checkbox("Show Moving Averages", value=False)
+if show_ma:
+    ma_periods = st.sidebar.multiselect(
+        "MA Periods",
+        options=[20, 50, 100, 200],
+        default=[50, 200]
+    )
+
+show_bb = st.sidebar.checkbox("Show Bollinger Bands", value=False)
+if show_bb:
+    bb_period = st.sidebar.slider("BB Period", 5, 50, 20)
+    bb_std = st.sidebar.slider("BB Standard Deviation", 1.0, 4.0, 2.0, 0.1)
+
 strategy = st.sidebar.selectbox(
     "Strategy", 
     ["MA Crossover", "RSI", "Bollinger Bands", "MACD", "Combined Strategy"]
 )
 
-# Strategy Parameters
 st.sidebar.subheader("Strategy Parameters")
 strategy_params = {}
 
@@ -141,7 +147,7 @@ elif strategy == "MACD":
         'histogram_threshold': hist_threshold
     }
 
-else:  # Combined Strategy
+else:
     st.sidebar.subheader("Select Strategies to Combine")
     use_ma = st.sidebar.checkbox("Use MA Crossover", value=True)
     use_rsi = st.sidebar.checkbox("Use RSI", value=True)
@@ -182,16 +188,13 @@ else:  # Combined Strategy
         'combination_method': combination_method
     }
 
-# Backtesting Parameters
 st.sidebar.subheader("Backtesting")
 initial_capital = st.sidebar.number_input("Initial Capital (USDT)", min_value=100, value=10000, step=100)
 backtest_days = st.sidebar.slider("Backtest Period (Days)", min_value=1, max_value=365, value=30)
 
-# Create tabs for live trading and backtesting
 tab1, tab2 = st.tabs(["Live Trading", "Backtesting"])
 
 def initialize_strategy():
-    """Initialize the trading strategy based on user selection"""
     try:
         if strategy == "MA Crossover":
             return MACrossoverStrategy(**strategy_params)
@@ -212,15 +215,12 @@ def initialize_strategy():
         return None
 
 def main():
-    """Main application logic with proper error handling"""
     try:
-        # Initialize strategy first
         active_strategy = initialize_strategy()
         if active_strategy is None:
             st.warning("Please configure a valid strategy to continue")
             return
 
-        # Fetch data with error handling
         try:
             data = get_historical_data(exchange, symbol, timeframe_value)
             if data is None or data.empty:
@@ -230,7 +230,6 @@ def main():
             st.error(f"Error fetching market data: {str(e)}")
             return
 
-        # Generate signals
         try:
             signals = active_strategy.generate_signals(data)
         except Exception as e:
@@ -238,14 +237,19 @@ def main():
             return
 
         with tab1:
-            # Live Trading View
             col1, col2 = st.columns([2, 1])
             
             with col1:
-                # Price chart with error handling
                 st.subheader(f"{symbol} Price Chart")
                 try:
-                    fig = create_price_chart(data, symbol)
+                    chart_params = {
+                        'show_ma': show_ma,
+                        'ma_periods': ma_periods if show_ma else None,
+                        'show_bb': show_bb,
+                        'bb_period': bb_period if show_bb else None,
+                        'bb_std': bb_std if show_bb else None
+                    }
+                    fig = create_price_chart(data, symbol, chart_params)
                     if fig is not None:
                         st.plotly_chart(fig, use_container_width=True)
                     else:
@@ -253,21 +257,18 @@ def main():
                 except Exception as e:
                     st.error(f"Error creating price chart: {str(e)}")
                 
-                # Display signals with error handling
                 try:
                     display_signals(signals)
                 except Exception as e:
                     st.error(f"Error displaying signals: {str(e)}")
 
             with col2:
-                # Display metrics with error handling
                 try:
                     st.subheader("Performance Metrics")
                     display_metrics(data, signals)
                 except Exception as e:
                     st.error(f"Error displaying metrics: {str(e)}")
                 
-                # Latest signals
                 st.subheader("Recent Signals")
                 if signals:
                     for signal in signals[-5:]:
@@ -276,7 +277,6 @@ def main():
                 else:
                     st.info("No signals generated yet")
                     
-                # Display current strategy parameters
                 st.subheader("Current Strategy Settings")
                 if strategy == "Combined Strategy":
                     st.write(f"Combination Method: {strategy_params['combination_method']}")
@@ -288,20 +288,16 @@ def main():
                         st.write(f"{param.replace('_', ' ').title()}: {value}")
         
         with tab2:
-            # Backtesting View with error handling
             st.subheader("Backtest Results")
             try:
-                # Get historical data for backtesting
                 end_date = datetime.now()
                 start_date = end_date - timedelta(days=backtest_days)
                 backtest_data = get_historical_data(exchange, symbol, timeframe_value, limit=1440*backtest_days)
                 
                 if backtest_data is not None and not backtest_data.empty:
-                    # Run backtest
                     backtester = Backtester(active_strategy, initial_capital)
                     results = backtester.run(backtest_data)
                     
-                    # Display metrics
                     col1, col2, col3, col4, col5 = st.columns(5)
                     col1.metric("Total Return", f"{results['total_return']:.2f}%")
                     col2.metric("Sharpe Ratio", f"{results['sharpe_ratio']:.2f}")
@@ -309,7 +305,6 @@ def main():
                     col4.metric("Win Rate", f"{results['win_rate']:.2f}%")
                     col5.metric("Total Trades", results['total_trades'])
                     
-                    # Display backtest chart
                     backtest_chart = backtester.plot_results()
                     if backtest_chart:
                         st.plotly_chart(backtest_chart, use_container_width=True)

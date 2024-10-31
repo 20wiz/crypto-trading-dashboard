@@ -72,32 +72,37 @@ st.sidebar.title("Configuration")
 exchange = st.sidebar.selectbox("Exchange", ["binance", "coinbase", "kraken"])
 symbol = st.sidebar.selectbox("Trading Pair", ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "ADA/USDT"])
 
-st.subheader("Chart Timeframe")
-timeframe = st.selectbox(
-    "Select chart timeframe",
-    options=list(timeframe_options.keys()),
-    format_func=lambda x: x,
-    key="timeframe_selector"
-)
-st.session_state.timeframe_value = timeframe_options[timeframe]
+st.subheader("Chart Timeframe and Options")
+col1, col2, col3 = st.columns(3)
 
-st.sidebar.subheader("Chart Options")
-
-show_ma = st.sidebar.checkbox("Show Moving Averages", value=False)
-ma_periods = None
-if show_ma:
-    ma_periods = st.sidebar.multiselect(
-        "MA Periods",
-        options=[20, 50, 100, 200],
-        default=[50, 200]
+with col1:
+    timeframe = st.selectbox(
+        "Select chart timeframe",
+        options=list(timeframe_options.keys()),
+        format_func=lambda x: x,
+        key="timeframe_selector"
     )
+    st.session_state.timeframe_value = timeframe_options[timeframe]
 
-show_bb = st.sidebar.checkbox("Show Bollinger Bands", value=False)
-bb_period = None
-bb_std = None
-if show_bb:
-    bb_period = st.sidebar.slider("BB Period", 5, 50, 20)
-    bb_std = st.sidebar.slider("BB Standard Deviation", 1.0, 4.0, 2.0, 0.1)
+with col2:
+    show_ma = st.checkbox("Show Moving Averages", value=False)
+    if show_ma:
+        ma_periods = st.multiselect(
+            "MA Periods",
+            options=[20, 50, 100, 200],
+            default=[50, 200]
+        )
+    else:
+        ma_periods = None
+
+with col3:
+    show_bb = st.checkbox("Show Bollinger Bands", value=False)
+    if show_bb:
+        bb_period = st.slider("BB Period", 5, 50, 20)
+        bb_std = st.slider("BB Standard Deviation", 1.0, 4.0, 2.0, 0.1)
+    else:
+        bb_period = None
+        bb_std = None
 
 strategy = st.sidebar.selectbox(
     "Strategy", 

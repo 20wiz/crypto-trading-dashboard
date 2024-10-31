@@ -54,29 +54,6 @@ st.sidebar.title("Configuration")
 exchange = st.sidebar.selectbox("Exchange", ["binance", "coinbase", "kraken"])
 symbol = st.sidebar.selectbox("Trading Pair", ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "ADA/USDT"])
 
-timeframe_options = {
-    "5 minutes": "5m",
-    "15 minutes": "15m",
-    "30 minutes": "30m",
-    "1 hour": "1h",
-    "2 hours": "2h",
-    "4 hours": "4h",
-    "6 hours": "6h",
-    "8 hours": "8h",
-    "12 hours": "12h",
-    "1 day": "1d",
-    "3 days": "3d",
-    "1 week": "1w",
-    "1 month": "1M"
-}
-
-timeframe = st.sidebar.selectbox(
-    "Timeframe",
-    options=list(timeframe_options.keys()),
-    format_func=lambda x: x
-)
-timeframe_value = timeframe_options[timeframe]
-
 st.sidebar.subheader("Chart Options")
 show_ma = st.sidebar.checkbox("Show Moving Averages", value=False)
 if show_ma:
@@ -147,7 +124,7 @@ elif strategy == "MACD":
         'histogram_threshold': hist_threshold
     }
 
-else:
+else:  # Combined Strategy
     st.sidebar.subheader("Select Strategies to Combine")
     use_ma = st.sidebar.checkbox("Use MA Crossover", value=True)
     use_rsi = st.sidebar.checkbox("Use RSI", value=True)
@@ -237,6 +214,32 @@ def main():
             return
 
         with tab1:
+            # Move timeframe selector above the chart
+            timeframe_options = {
+                "5 minutes": "5m",
+                "15 minutes": "15m",
+                "30 minutes": "30m",
+                "1 hour": "1h",
+                "2 hours": "2h",
+                "4 hours": "4h",
+                "6 hours": "6h",
+                "8 hours": "8h",
+                "12 hours": "12h",
+                "1 day": "1d",
+                "3 days": "3d",
+                "1 week": "1w",
+                "1 month": "1M"
+            }
+            
+            st.subheader("Select Timeframe")
+            timeframe = st.selectbox(
+                "Select chart timeframe",
+                options=list(timeframe_options.keys()),
+                format_func=lambda x: x,
+                key="timeframe_selector"
+            )
+            timeframe_value = timeframe_options[timeframe]
+            
             col1, col2 = st.columns([2, 1])
             
             with col1:

@@ -1,0 +1,12 @@
+[project]
+name = "repl-nix-cryptocharttrader"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "ccxt>=4.4.25",
+    "numpy>=2.1.2",
+    "pandas>=2.2.3",
+    "plotly>=5.24.1",
+    "streamlit>=1.39.0",
+]

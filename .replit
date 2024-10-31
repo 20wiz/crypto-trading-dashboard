@@ -1,0 +1,38 @@
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Crypto Dashboard"
+
+[[workflows.workflow]]
+name = "Crypto Dashboard"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "streamlit run main.py"
+waitForPort = 5000
+
+[deployment]
+run = ["sh", "-c", "streamlit run main.py"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80

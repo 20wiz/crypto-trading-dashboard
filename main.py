@@ -42,6 +42,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# Initialize session state
 if 'notifications' not in st.session_state:
     st.session_state.notifications = []
 if 'active_strategy' not in st.session_state:
@@ -50,6 +51,8 @@ if 'data' not in st.session_state:
     st.session_state.data = None
 if 'timeframe_value' not in st.session_state:
     st.session_state.timeframe_value = "5m"
+if 'y_axis_range' not in st.session_state:
+    st.session_state.y_axis_range = None
 
 timeframe_options = {
     "5 minutes": "5m",
@@ -246,27 +249,29 @@ def main():
             with col1:
                 st.subheader(f"{symbol} Price Chart")
                 
+                # Add zoom controls
+                zoom_col1, zoom_col2 = st.columns(2)
+                with zoom_col1:
+                    if st.button("➖ Zoom Out"):
+                        y_min = float(data['low'].min() * 0.9)
+                        y_max = float(data['high'].max() * 1.1)
+                        st.session_state.y_axis_range = (y_min, y_max)
+                with zoom_col2:
+                    if st.button("➕ Zoom In"):
+                        y_min = float(data['low'].min() * 0.97)
+                        y_max = float(data['high'].max() * 1.03)
+                        st.session_state.y_axis_range = (y_min, y_max)
+                
+                # Create chart parameters
                 chart_params = {
                     'show_ma': show_ma,
                     'ma_periods': ma_periods if show_ma else None,
                     'show_bb': show_bb,
                     'bb_period': bb_period if show_bb else None,
-                    'bb_std': bb_std if show_bb else None
+                    'bb_std': bb_std if show_bb else None,
+                    'y_axis_range': st.session_state.y_axis_range
                 }
-
-                # Add zoom buttons in a horizontal layout
-                zoom_col1, zoom_col2 = st.columns(2)
-                with zoom_col1:
-                    if st.button("➖ Zoom Out"):
-                        y_min = float(data['low'].min() * 0.8)
-                        y_max = float(data['high'].max() * 1.2)
-                        chart_params['y_axis_range'] = (y_min, y_max)
-                with zoom_col2:
-                    if st.button("➕ Zoom In"):
-                        y_min = float(data['low'].min() * 0.95)
-                        y_max = float(data['high'].max() * 1.05)
-                        chart_params['y_axis_range'] = (y_min, y_max)
-
+                
                 # Create and display the chart
                 fig = create_price_chart(data, symbol, chart_params)
                 st.plotly_chart(fig, use_container_width=True)

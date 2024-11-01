@@ -206,15 +206,15 @@ def main():
             with col1:
                 st.subheader(f"{symbol} Price Chart")
                 
-                # Timeframe and options
                 opt_col1, opt_col2, opt_col3 = st.columns(3)
                 
                 with opt_col1:
                     timeframe = st.selectbox(
-                        label='',  # Remove label
+                        label='Time',
                         options=list(timeframe_options.keys()),
                         format_func=lambda x: x,
-                        key='timeframe_selector'
+                        key='timeframe_selector',
+                        label_visibility='collapsed'
                     )
                     st.session_state.timeframe_value = timeframe_options[timeframe]
 
@@ -238,7 +238,6 @@ def main():
                         bb_period = None
                         bb_std = None
                 
-                # Create chart parameters
                 chart_params = {
                     'show_ma': show_ma,
                     'ma_periods': ma_periods if show_ma else None,
@@ -247,7 +246,6 @@ def main():
                     'bb_std': bb_std if show_bb else None
                 }
                 
-                # Create and display the chart
                 fig = create_price_chart(data, symbol, chart_params)
                 st.plotly_chart(fig, use_container_width=True, config={
                     'scrollZoom': True,

@@ -2,6 +2,15 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
+def format_price(price):
+    """Format price based on its magnitude"""
+    if pd.isna(price):
+        return ''
+    if abs(price) >= 10000:  # Large numbers
+        return f'${price:,.0f}'  # No decimals for large numbers
+    else:  # Small numbers
+        return f'${price:,.3f}'  # 3 decimal places for small numbers
+
 def display_signals(signals: list):
     """
     Display trading signals in a formatted table with improved styling
@@ -26,12 +35,12 @@ def display_signals(signals: list):
             return ''
         return 'color: green' if val == 'BUY' else 'color: red'
     
-    # Apply styling
+    # Apply styling with custom price formatting
     styled_df = signals_df.style.map(
         color_action,
         subset=['action']
     ).format({
-        'price': '${:,.2f}'  # Format price with 2 decimal places and dollar sign
+        'price': format_price  # Use custom formatter function
     })
     
     # Enhanced table display with better formatting
@@ -47,8 +56,8 @@ def display_signals(signals: list):
             ),
             "price": st.column_config.NumberColumn(
                 "Price",
-                format="$%.2f",  # Updated format to show 2 decimal places with dollar sign
-                help="Asset price at signal"
+                help="Asset price at signal",
+                format=lambda x: format_price(x)  # Use same custom formatter
             ),
             "action": st.column_config.Column(
                 "Action",
@@ -78,11 +87,11 @@ def display_signals(signals: list):
         with col3:
             st.metric("Signal Rate", signal_rate)
         
-        # Display latest signal
+        # Display latest signal with custom price formatting
         if signals:
             latest = signals[-1]
             st.info(
-                f"Latest Signal: {latest['action']} @ ${latest['price']:.2f}\n"  # Added dollar sign
+                f"Latest Signal: {latest['action']} @ {format_price(latest['price'])}\n"
                 f"Time: {latest['timestamp']}\n"
                 f"Indicators: {latest['indicator']}"
             )

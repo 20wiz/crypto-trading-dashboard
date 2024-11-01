@@ -6,7 +6,7 @@ import time
 
 from components.charts import create_price_chart
 from components.metrics import display_metrics
-from components.signals import display_signals
+from components.signals import display_signals, format_price
 from strategies.ma_crossover import MACrossoverStrategy
 from strategies.rsi_strategy import RSIStrategy
 from strategies.bollinger_bands import BollingerBandsStrategy
@@ -71,145 +71,7 @@ timeframe_options = {
     "1 month": "1M"
 }
 
-st.sidebar.title("Configuration")
-exchange = st.sidebar.selectbox("Exchange", ["binance", "coinbase", "kraken"])
-symbol = st.sidebar.selectbox("Trading Pair", ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "ADA/USDT"])
-
-st.subheader("Chart Timeframe and Options")
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    timeframe = st.selectbox(
-        "Select chart timeframe",
-        options=list(timeframe_options.keys()),
-        format_func=lambda x: x,
-        key="timeframe_selector"
-    )
-    st.session_state.timeframe_value = timeframe_options[timeframe]
-
-with col2:
-    show_ma = st.checkbox("Show Moving Averages", value=False)
-    if show_ma:
-        ma_periods = st.multiselect(
-            "MA Periods",
-            options=[20, 50, 100, 200],
-            default=[50, 200]
-        )
-    else:
-        ma_periods = None
-
-with col3:
-    show_bb = st.checkbox("Show Bollinger Bands", value=False)
-    if show_bb:
-        bb_period = st.number_input("BB Period", min_value=5, max_value=50, value=20, step=1)
-        bb_std = st.number_input("BB Standard Deviation", min_value=1.0, max_value=4.0, value=2.0, step=0.1)
-    else:
-        bb_period = None
-        bb_std = None
-
-strategy = st.sidebar.selectbox(
-    "Strategy", 
-    ["MA Crossover", "RSI", "Bollinger Bands", "MACD", "Combined Strategy"]
-)
-
-st.sidebar.subheader("Strategy Parameters")
-strategy_params = {}
-
-if strategy == "MA Crossover":
-    short_window = st.sidebar.slider("Short MA Window", min_value=5, max_value=50, value=20, step=1)
-    long_window = st.sidebar.slider("Long MA Window", min_value=20, max_value=200, value=50, step=5)
-    strategy_params = {'short_window': short_window, 'long_window': long_window}
-
-elif strategy == "RSI":
-    rsi_period = st.sidebar.slider("RSI Period", min_value=2, max_value=30, value=14, step=1)
-    rsi_overbought = st.sidebar.slider("Overbought Level", min_value=50, max_value=90, value=70, step=1)
-    rsi_oversold = st.sidebar.slider("Oversold Level", min_value=10, max_value=50, value=30, step=1)
-    strategy_params = {
-        'period': rsi_period,
-        'overbought': rsi_overbought,
-        'oversold': rsi_oversold
-    }
-
-elif strategy == "Bollinger Bands":
-    bb_period = st.sidebar.slider("BB Period", min_value=5, max_value=50, value=20, step=1)
-    bb_std = st.sidebar.slider("Standard Deviation", min_value=1.0, max_value=4.0, value=2.0, step=0.1)
-    use_atr = st.sidebar.checkbox("Use ATR for Exits", value=True)
-    if use_atr:
-        atr_period = st.sidebar.slider("ATR Period", min_value=5, max_value=30, value=14, step=1)
-        atr_multiplier = st.sidebar.slider("ATR Multiplier", min_value=1.0, max_value=5.0, value=2.0, step=0.1)
-        strategy_params = {
-            'period': bb_period,
-            'std_dev': bb_std,
-            'use_atr_exits': use_atr,
-            'atr_period': atr_period,
-            'atr_multiplier': atr_multiplier
-        }
-    else:
-        strategy_params = {
-            'period': bb_period,
-            'std_dev': bb_std,
-            'use_atr_exits': use_atr
-        }
-
-elif strategy == "MACD":
-    fast_period = st.sidebar.slider("Fast Period", min_value=5, max_value=50, value=12, step=1)
-    slow_period = st.sidebar.slider("Slow Period", min_value=10, max_value=100, value=26, step=1)
-    signal_period = st.sidebar.slider("Signal Period", min_value=5, max_value=30, value=9, step=1)
-    hist_threshold = st.sidebar.slider("Histogram Threshold", min_value=0.0, max_value=1.0, value=0.0, step=0.1)
-    strategy_params = {
-        'fast_period': fast_period,
-        'slow_period': slow_period,
-        'signal_period': signal_period,
-        'histogram_threshold': hist_threshold
-    }
-
-else:  # Combined Strategy
-    st.sidebar.subheader("Select Strategies to Combine")
-    strategies_list = []
-    combination_method = st.sidebar.radio(
-        "Combination Method",
-        ["AND", "OR"],
-        help="AND: All strategies must agree | OR: Any strategy can trigger"
-    )
-    
-    use_ma = st.sidebar.checkbox("Use MA Crossover", value=True)
-    if use_ma:
-        ma_short = st.sidebar.slider("MA Short Window", min_value=5, max_value=50, value=20, step=1)
-        ma_long = st.sidebar.slider("MA Long Window", min_value=20, max_value=200, value=50, step=5)
-        strategies_list.append(MACrossoverStrategy(short_window=ma_short, long_window=ma_long))
-        
-    use_rsi = st.sidebar.checkbox("Use RSI", value=True)
-    if use_rsi:
-        rsi_period = st.sidebar.slider("RSI Period", min_value=2, max_value=30, value=14, step=1)
-        rsi_ob = st.sidebar.slider("RSI Overbought", min_value=50, max_value=90, value=70, step=1)
-        rsi_os = st.sidebar.slider("RSI Oversold", min_value=10, max_value=50, value=30, step=1)
-        strategies_list.append(RSIStrategy(period=rsi_period, overbought=rsi_ob, oversold=rsi_os))
-        
-    use_bb = st.sidebar.checkbox("Use Bollinger Bands")
-    if use_bb:
-        bb_period = st.sidebar.slider("BB Period", min_value=5, max_value=50, value=20, step=1)
-        bb_std = st.sidebar.slider("BB Std Dev", min_value=1.0, max_value=4.0, value=2.0, step=0.1)
-        strategies_list.append(BollingerBandsStrategy(period=bb_period, std_dev=bb_std, use_atr_exits=False))
-        
-    use_macd = st.sidebar.checkbox("Use MACD")
-    if use_macd:
-        macd_fast = st.sidebar.slider("MACD Fast", min_value=5, max_value=50, value=12, step=1)
-        macd_slow = st.sidebar.slider("MACD Slow", min_value=10, max_value=100, value=26, step=1)
-        macd_signal = st.sidebar.slider("MACD Signal", min_value=5, max_value=30, value=9, step=1)
-        strategies_list.append(MACDStrategy(fast_period=macd_fast, slow_period=macd_slow, signal_period=macd_signal))
-    
-    strategy_params = {
-        'strategies': strategies_list,
-        'combination_method': combination_method
-    }
-
-st.sidebar.subheader("Backtesting")
-initial_capital = st.sidebar.number_input("Initial Capital (USDT)", min_value=100, value=10000, step=100)
-backtest_days = st.sidebar.slider("Backtest Period (Days)", min_value=1, max_value=365, value=30)
-
-tab1, tab2 = st.tabs(["Live Trading", "Backtesting"])
-
-def initialize_strategy():
+def initialize_strategy(strategy, strategy_params, strategies_list=None, combination_method=None):
     if strategy == "MA Crossover":
         return MACrossoverStrategy(**strategy_params)
     elif strategy == "RSI":
@@ -218,13 +80,115 @@ def initialize_strategy():
         return BollingerBandsStrategy(**strategy_params)
     elif strategy == "MACD":
         return MACDStrategy(**strategy_params)
-    elif strategy == "Combined Strategy" and len(strategies_list) >= 2:
+    elif strategy == "Combined Strategy" and strategies_list and len(strategies_list) >= 2:
         return CombinedStrategy(strategies=strategies_list, combination_method=combination_method)
     return None
 
 def main():
+    st.sidebar.title("Configuration")
+    exchange = st.sidebar.selectbox("Exchange", ["binance", "coinbase", "kraken"])
+    symbol = st.sidebar.selectbox("Trading Pair", ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "ADA/USDT"])
+
+    strategy = st.sidebar.selectbox(
+        "Strategy", 
+        ["MA Crossover", "RSI", "Bollinger Bands", "MACD", "Combined Strategy"]
+    )
+
+    st.sidebar.subheader("Strategy Parameters")
+    strategy_params = {}
+    strategies_list = []
+    combination_method = None
+
+    if strategy == "MA Crossover":
+        short_window = st.sidebar.slider("Short MA Window", min_value=5, max_value=50, value=20, step=1)
+        long_window = st.sidebar.slider("Long MA Window", min_value=20, max_value=200, value=50, step=5)
+        strategy_params = {'short_window': short_window, 'long_window': long_window}
+
+    elif strategy == "RSI":
+        rsi_period = st.sidebar.slider("RSI Period", min_value=2, max_value=30, value=14, step=1)
+        rsi_overbought = st.sidebar.slider("Overbought Level", min_value=50, max_value=90, value=70, step=1)
+        rsi_oversold = st.sidebar.slider("Oversold Level", min_value=10, max_value=50, value=30, step=1)
+        strategy_params = {
+            'period': rsi_period,
+            'overbought': rsi_overbought,
+            'oversold': rsi_oversold
+        }
+
+    elif strategy == "Bollinger Bands":
+        bb_period = st.sidebar.slider("BB Period", min_value=5, max_value=50, value=20, step=1)
+        bb_std = st.sidebar.slider("Standard Deviation", min_value=1.0, max_value=4.0, value=2.0, step=0.1)
+        use_atr = st.sidebar.checkbox("Use ATR for Exits", value=True)
+        if use_atr:
+            atr_period = st.sidebar.slider("ATR Period", min_value=5, max_value=30, value=14, step=1)
+            atr_multiplier = st.sidebar.slider("ATR Multiplier", min_value=1.0, max_value=5.0, value=2.0, step=0.1)
+            strategy_params = {
+                'period': bb_period,
+                'std_dev': bb_std,
+                'use_atr_exits': use_atr,
+                'atr_period': atr_period,
+                'atr_multiplier': atr_multiplier
+            }
+        else:
+            strategy_params = {
+                'period': bb_period,
+                'std_dev': bb_std,
+                'use_atr_exits': use_atr
+            }
+
+    elif strategy == "MACD":
+        fast_period = st.sidebar.slider("Fast Period", min_value=5, max_value=50, value=12, step=1)
+        slow_period = st.sidebar.slider("Slow Period", min_value=10, max_value=100, value=26, step=1)
+        signal_period = st.sidebar.slider("Signal Period", min_value=5, max_value=30, value=9, step=1)
+        hist_threshold = st.sidebar.slider("Histogram Threshold", min_value=0.0, max_value=1.0, value=0.0, step=0.1)
+        strategy_params = {
+            'fast_period': fast_period,
+            'slow_period': slow_period,
+            'signal_period': signal_period,
+            'histogram_threshold': hist_threshold
+        }
+
+    else:  # Combined Strategy
+        st.sidebar.subheader("Select Strategies to Combine")
+        combination_method = st.sidebar.radio(
+            "Combination Method",
+            ["AND", "OR"],
+            help="AND: All strategies must agree | OR: Any strategy can trigger"
+        )
+        
+        use_ma = st.sidebar.checkbox("Use MA Crossover", value=True)
+        if use_ma:
+            ma_short = st.sidebar.slider("MA Short Window", min_value=5, max_value=50, value=20, step=1)
+            ma_long = st.sidebar.slider("MA Long Window", min_value=20, max_value=200, value=50, step=5)
+            strategies_list.append(MACrossoverStrategy(short_window=ma_short, long_window=ma_long))
+            
+        use_rsi = st.sidebar.checkbox("Use RSI", value=True)
+        if use_rsi:
+            rsi_period = st.sidebar.slider("RSI Period", min_value=2, max_value=30, value=14, step=1)
+            rsi_ob = st.sidebar.slider("RSI Overbought", min_value=50, max_value=90, value=70, step=1)
+            rsi_os = st.sidebar.slider("RSI Oversold", min_value=10, max_value=50, value=30, step=1)
+            strategies_list.append(RSIStrategy(period=rsi_period, overbought=rsi_ob, oversold=rsi_os))
+            
+        use_bb = st.sidebar.checkbox("Use Bollinger Bands")
+        if use_bb:
+            bb_period = st.sidebar.slider("BB Period", min_value=5, max_value=50, value=20, step=1)
+            bb_std = st.sidebar.slider("BB Std Dev", min_value=1.0, max_value=4.0, value=2.0, step=0.1)
+            strategies_list.append(BollingerBandsStrategy(period=bb_period, std_dev=bb_std, use_atr_exits=False))
+            
+        use_macd = st.sidebar.checkbox("Use MACD")
+        if use_macd:
+            macd_fast = st.sidebar.slider("MACD Fast", min_value=5, max_value=50, value=12, step=1)
+            macd_slow = st.sidebar.slider("MACD Slow", min_value=10, max_value=100, value=26, step=1)
+            macd_signal = st.sidebar.slider("MACD Signal", min_value=5, max_value=30, value=9, step=1)
+            strategies_list.append(MACDStrategy(fast_period=macd_fast, slow_period=macd_slow, signal_period=macd_signal))
+
+    st.sidebar.subheader("Backtesting")
+    initial_capital = st.sidebar.number_input("Initial Capital (USDT)", min_value=100, value=10000, step=100)
+    backtest_days = st.sidebar.slider("Backtest Period (Days)", min_value=1, max_value=365, value=30)
+
+    tab1, tab2 = st.tabs(["Live Trading", "Backtesting"])
+
     try:
-        active_strategy = initialize_strategy()
+        active_strategy = initialize_strategy(strategy, strategy_params, strategies_list, combination_method)
         if active_strategy is None:
             st.warning("Please configure a valid strategy to continue")
             return
@@ -242,6 +206,38 @@ def main():
             with col1:
                 st.subheader(f"{symbol} Price Chart")
                 
+                # Timeframe and options
+                opt_col1, opt_col2, opt_col3 = st.columns(3)
+                
+                with opt_col1:
+                    timeframe = st.selectbox(
+                        label='',  # Remove label
+                        options=list(timeframe_options.keys()),
+                        format_func=lambda x: x,
+                        key='timeframe_selector'
+                    )
+                    st.session_state.timeframe_value = timeframe_options[timeframe]
+
+                with opt_col2:
+                    show_ma = st.checkbox('Show Moving Averages', value=False)
+                    if show_ma:
+                        ma_periods = st.multiselect(
+                            'MA Periods',
+                            options=[20, 50, 100, 200],
+                            default=[50, 200]
+                        )
+                    else:
+                        ma_periods = None
+
+                with opt_col3:
+                    show_bb = st.checkbox('Show Bollinger Bands', value=False)
+                    if show_bb:
+                        bb_period = st.number_input('BB Period', min_value=5, max_value=50, value=20, step=1)
+                        bb_std = st.number_input('BB Standard Deviation', min_value=1.0, max_value=4.0, value=2.0, step=0.1)
+                    else:
+                        bb_period = None
+                        bb_std = None
+                
                 # Create chart parameters
                 chart_params = {
                     'show_ma': show_ma,
@@ -251,7 +247,7 @@ def main():
                     'bb_std': bb_std if show_bb else None
                 }
                 
-                # Create and display the chart with JavaScript-based zoom controls
+                # Create and display the chart
                 fig = create_price_chart(data, symbol, chart_params)
                 st.plotly_chart(fig, use_container_width=True, config={
                     'scrollZoom': True,
@@ -276,7 +272,7 @@ def main():
                 st.subheader("Recent Signals")
                 if signals:
                     for signal in signals[-5:]:
-                        st.write(f"Signal: {signal['action']} at {signal['price']:.2f}")
+                        st.write(f"Signal: {signal['action']} at {format_price(signal['price'])}")
                         st.write(f"Indicators: {signal['indicator']}")
                 else:
                     st.info("No signals generated yet")

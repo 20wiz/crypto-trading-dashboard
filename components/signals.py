@@ -6,10 +6,12 @@ def format_price(price):
     """Format price based on its magnitude"""
     if pd.isna(price):
         return ''
-    if abs(price) >= 10000:  # Large numbers
-        return f'${price:,.0f}'  # No decimals for large numbers
-    else:  # Small numbers
-        return f'${price:,.3f}'  # 3 decimal places for small numbers
+    if abs(price) >= 1000:  # Large numbers (1000+)
+        return f'${price:,.2f}'  # Use comma separator and 2 decimal places
+    elif abs(price) >= 1:  # Medium numbers (1-999)
+        return f'${price:.2f}'   # 2 decimal places without comma
+    else:  # Small numbers (<1)
+        return f'${price:.6f}'   # 6 decimal places for small numbers
 
 def display_signals(signals: list):
     """

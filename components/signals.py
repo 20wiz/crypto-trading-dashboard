@@ -40,7 +40,7 @@ def display_signals(signals: list):
         color_action,
         subset=['action']
     ).format({
-        'price': format_price  # Use custom formatter function
+        'price': '${:,.3f}'  # Use direct string format
     })
     
     # Enhanced table display with better formatting
@@ -57,7 +57,7 @@ def display_signals(signals: list):
             "price": st.column_config.NumberColumn(
                 "Price",
                 help="Asset price at signal",
-                format=lambda x: format_price(x)  # Use same custom formatter
+                format='${:,.3f}'  # Use direct string format
             ),
             "action": st.column_config.Column(
                 "Action",
@@ -91,7 +91,7 @@ def display_signals(signals: list):
         if signals:
             latest = signals[-1]
             st.info(
-                f"Latest Signal: {latest['action']} @ {format_price(latest['price'])}\n"
+                f"Latest Signal: {latest['action']} @ ${latest['price']:,.3f}\n"
                 f"Time: {latest['timestamp']}\n"
                 f"Indicators: {latest['indicator']}"
             )

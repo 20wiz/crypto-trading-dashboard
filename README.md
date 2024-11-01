@@ -17,13 +17,10 @@ A real-time cryptocurrency trading dashboard with interactive charts, multiple s
 
 ## Setup Instructions
 
-1. Clone the repository from Replit:
-   - Visit: [replit.com/@YourUsername/CryptoChartTrader](https://replit.com/@YourUsername/CryptoChartTrader)
-   - Click "Fork" to create your own copy
+1. Clone the repository 
 
-2. Dependencies will be automatically installed by Replit
+2. Dependencies 
 
-3. The application will automatically start when you open the project in Replit
 
 ## Usage
 

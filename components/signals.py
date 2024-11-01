@@ -30,7 +30,9 @@ def display_signals(signals: list):
     styled_df = signals_df.style.map(
         color_action,
         subset=['action']
-    )
+    ).format({
+        'price': '${:,.2f}'  # Format price with 2 decimal places and dollar sign
+    })
     
     # Enhanced table display with better formatting
     st.dataframe(
@@ -45,7 +47,7 @@ def display_signals(signals: list):
             ),
             "price": st.column_config.NumberColumn(
                 "Price",
-                format="$.2f",  # Changed from $.4f to $.2f
+                format="$%.2f",  # Updated format to show 2 decimal places with dollar sign
                 help="Asset price at signal"
             ),
             "action": st.column_config.Column(
@@ -80,7 +82,7 @@ def display_signals(signals: list):
         if signals:
             latest = signals[-1]
             st.info(
-                f"Latest Signal: {latest['action']} @ {latest['price']:.2f}\n"
+                f"Latest Signal: {latest['action']} @ ${latest['price']:.2f}\n"  # Added dollar sign
                 f"Time: {latest['timestamp']}\n"
                 f"Indicators: {latest['indicator']}"
             )

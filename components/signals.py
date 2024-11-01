@@ -29,23 +29,13 @@ def display_signals(signals: list):
     # Format the table
     st.subheader("Trading Signals")
     
-    # Style the DataFrame using the new map method
-    def color_action(val):
-        if pd.isna(val):
-            return ''
-        return 'color: green' if val == 'BUY' else 'color: red'
-    
-    # Apply styling with custom price formatting
-    styled_df = signals_df.style.map(
-        color_action,
-        subset=['action']
-    ).format({
-        'price': '${:,.3f}'  # Use direct string format
-    })
+    # Apply custom price formatting to the DataFrame
+    if 'price' in signals_df.columns:
+        signals_df['price'] = signals_df['price'].apply(format_price)
     
     # Enhanced table display with better formatting
     st.dataframe(
-        styled_df,
+        signals_df,
         use_container_width=True,
         height=400,
         column_config={
@@ -54,10 +44,9 @@ def display_signals(signals: list):
                 format="DD/MM/YY HH:mm",
                 help="Signal timestamp"
             ),
-            "price": st.column_config.NumberColumn(
+            "price": st.column_config.TextColumn(
                 "Price",
                 help="Asset price at signal",
-                format='${:,.3f}'  # Use direct string format
             ),
             "action": st.column_config.Column(
                 "Action",
@@ -91,7 +80,7 @@ def display_signals(signals: list):
         if signals:
             latest = signals[-1]
             st.info(
-                f"Latest Signal: {latest['action']} @ ${latest['price']:,.3f}\n"
+                f"Latest Signal: {latest['action']} @ {format_price(latest['price'])}\n"
                 f"Time: {latest['timestamp']}\n"
                 f"Indicators: {latest['indicator']}"
             )

@@ -2,6 +2,10 @@
 
 A real-time cryptocurrency trading dashboard with interactive charts, multiple strategies, and signal notifications built using Streamlit.
 
+<p align="center">
+    <img src="screenshot1.png" alt="detected result" width="100%">
+</p>
+
 ## Features
 
 - Real-time cryptocurrency price charts
@@ -20,7 +24,6 @@ A real-time cryptocurrency trading dashboard with interactive charts, multiple s
 1. Clone the repository 
 
 2. Dependencies 
-
 
 ## Usage
 

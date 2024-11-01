@@ -98,8 +98,8 @@ with col2:
 with col3:
     show_bb = st.checkbox("Show Bollinger Bands", value=False)
     if show_bb:
-        bb_period = st.slider("BB Period", 5, 50, 20)
-        bb_std = st.slider("BB Standard Deviation", 1.0, 4.0, 2.0, 0.1)
+        bb_period = st.number_input("BB Period", min_value=5, max_value=50, value=20, step=1)
+        bb_std = st.number_input("BB Standard Deviation", min_value=1.0, max_value=4.0, value=2.0, step=0.1)
     else:
         bb_period = None
         bb_std = None
@@ -207,24 +207,17 @@ backtest_days = st.sidebar.slider("Backtest Period (Days)", min_value=1, max_val
 tab1, tab2 = st.tabs(["Live Trading", "Backtesting"])
 
 def initialize_strategy():
-    try:
-        if strategy == "MA Crossover":
-            return MACrossoverStrategy(**strategy_params)
-        elif strategy == "RSI":
-            return RSIStrategy(**strategy_params)
-        elif strategy == "Bollinger Bands":
-            return BollingerBandsStrategy(**strategy_params)
-        elif strategy == "MACD":
-            return MACDStrategy(**strategy_params)
-        elif strategy == "Combined Strategy":
-            if len(strategies_list) < 2:
-                st.error("Please select at least two strategies to combine")
-                return None
-            return CombinedStrategy(strategies=strategies_list, combination_method=combination_method)
-        return None
-    except Exception as e:
-        st.error(f"Error initializing strategy: {str(e)}")
-        return None
+    if strategy == "MA Crossover":
+        return MACrossoverStrategy(**strategy_params)
+    elif strategy == "RSI":
+        return RSIStrategy(**strategy_params)
+    elif strategy == "Bollinger Bands":
+        return BollingerBandsStrategy(**strategy_params)
+    elif strategy == "MACD":
+        return MACDStrategy(**strategy_params)
+    elif strategy == "Combined Strategy" and len(strategies_list) >= 2:
+        return CombinedStrategy(strategies=strategies_list, combination_method=combination_method)
+    return None
 
 def main():
     try:
@@ -233,20 +226,12 @@ def main():
             st.warning("Please configure a valid strategy to continue")
             return
 
-        try:
-            data = get_historical_data(exchange, symbol, st.session_state.timeframe_value)
-            if data is None or data.empty:
-                st.error("Failed to fetch market data")
-                return
-        except Exception as e:
-            st.error(f"Error fetching market data: {str(e)}")
+        data = get_historical_data(exchange, symbol, st.session_state.timeframe_value)
+        if data is None or data.empty:
+            st.error("Failed to fetch market data")
             return
 
-        try:
-            signals = active_strategy.generate_signals(data)
-        except Exception as e:
-            st.error(f"Error generating signals: {str(e)}")
-            return
+        signals = active_strategy.generate_signals(data)
 
         with tab1:
             col1, col2 = st.columns([2, 1])

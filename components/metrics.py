@@ -19,7 +19,7 @@ def display_metrics(data: pd.DataFrame, signals: list):
     with col1:
         st.metric(
             label="Current Price",
-            value=f"${latest_price:.2f}",
+            value=f"${latest_price:,.5g}",
             delta=f"{price_change:.2f}%"
         )
     
@@ -33,7 +33,7 @@ def display_metrics(data: pd.DataFrame, signals: list):
         signal_count = len(signals)
         st.metric(
             label="Total Signals",
-            value=signal_count
+            value=f"{signal_count}"
         )
 
     # Trading statistics

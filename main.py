@@ -39,6 +39,9 @@ st.markdown("""
         padding: 10px;
         border-radius: 5px;
     }
+    [data-testid='stMetricValue'] {
+        font-size: 16px;
+    }
     </style>
     """, unsafe_allow_html=True)
 

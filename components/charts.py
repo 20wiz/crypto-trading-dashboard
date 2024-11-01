@@ -171,47 +171,4 @@ def create_price_chart(data: pd.DataFrame, symbol: str, chart_params: dict = Non
         row=1, col=1
     )
 
-    # Add buttons for y-axis range control
-    fig.update_layout(
-        updatemenus=[
-            dict(
-                type='buttons',
-                direction='right',
-                x=0.1,
-                y=1.1,
-                xanchor='left',
-                yanchor='top',
-                pad=dict(r=10, t=10),
-                showactive=False,
-                buttons=[
-                    dict(
-                        label='Reset Zoom',
-                        method='relayout',
-                        args=[{'yaxis.autorange': True}]
-                    ),
-                    dict(
-                        label='Zoom In',
-                        method='relayout',
-                        args=[{
-                            'yaxis.range': [
-                                price_min + (price_range * 0.2),
-                                price_max - (price_range * 0.2)
-                            ]
-                        }]
-                    ),
-                    dict(
-                        label='Zoom Out',
-                        method='relayout',
-                        args=[{
-                            'yaxis.range': [
-                                price_min - (price_range * 0.2),
-                                price_max + (price_range * 0.2)
-                            ]
-                        }]
-                    )
-                ]
-            )
-        ]
-    )
-
     return fig

@@ -7,7 +7,7 @@ def get_historical_data(exchange_name: str, symbol: str, timeframe: str, limit: 
     Fetch historical OHLCV data from the specified exchange
     """
     try:
-        # Initialize exchange
+
         exchange = getattr(ccxt, exchange_name)()
         
         # Fetch OHLCV data
